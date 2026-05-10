@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "▶ Linting..."
+pnpm lint || exit 1
+
+echo "▶ Type-checking..."
+pnpm type-check || exit 1
+
+echo "▶ Running unit tests..."
+pnpm test || exit 1
+
+echo "▶ Scanning for secrets..."
+if command -v trufflehog > /dev/null 2>&1; then
+  trufflehog git file://. --since-commit HEAD --only-verified --fail || exit 1
+else
+  echo "⚠ trufflehog not installed locally — skipping (CI will catch it)"
+fi

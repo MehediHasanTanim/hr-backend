@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR System — System Design Document</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f7f6f3;
+    --bg3: #f0efe9;
+    --border: rgba(0,0,0,0.10);
+    --border2: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text2: #5a5a56;
+    --text3: #8a8a84;
+    --accent: #2a5bd7;
+    --accent-bg: #e8eefb;
+    --success: #1a7a4a;
+    --success-bg: #e6f4ec;
+    --warn: #7a4a00;
+    --warn-bg: #fdf3e0;
+    --danger: #8a1a1a;
+    --danger-bg: #fbe8e8;
+    --purple: #4a2ab0;
+    --purple-bg: #eeebfb;
+    --teal: #0f6e56;
+    --teal-bg: #e1f5ee;
+    --coral: #993c1d;
+    --coral-bg: #faece7;
+    --mono: 'Courier New', monospace;
+    --r: 8px;
+    --rl: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg2: #252522;
+      --bg3: #2e2e2a;
+      --border: rgba(255,255,255,0.10);
+      --border2: rgba(255,255,255,0.18);
+      --text: #e8e8e2;
+      --text2: #a8a8a0;
+      --text3: #6a6a64;
+      --accent: #6a9af0;
+      --accent-bg: #1a2540;
+      --success: #5acea0;
+      --success-bg: #0d2e20;
+      --warn: #f0b94a;
+      --warn-bg: #2e2200;
+      --danger: #f07070;
+      --danger-bg: #2e0d0d;
+      --purple: #a090f0;
+      --purple-bg: #1e1838;
+      --teal: #5dcaa5;
+      --teal-bg: #0a2820;
+      --coral: #f0997b;
+      --coral-bg: #2a1208;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.7; }
+  .page { max-width: 960px; margin: 0 auto; padding: 48px 32px 80px; }
+
+  /* Nav */
+  .toc { position: sticky; top: 0; background: var(--bg); border-bottom: 0.5px solid var(--border); z-index: 100; padding: 0 32px; }
+  .toc-inner { max-width: 960px; margin: 0 auto; display: flex; gap: 4px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
+  .toc-inner::-webkit-scrollbar { display: none; }
+  .toc a { font-size: 12px; color: var(--text2); text-decoration: none; white-space: nowrap; padding: 4px 10px; border-radius: 20px; border: 0.5px solid transparent; }
+  .toc a:hover { background: var(--bg2); border-color: var(--border); color: var(--text); }
+  .toc a.active { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
+
+  /* Typography */
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 6px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 48px 0 16px; padding-top: 8px; border-top: 0.5px solid var(--border); }
+  h3 { font-size: 16px; font-weight: 600; margin: 28px 0 10px; color: var(--text); }
+  h4 { font-size: 14px; font-weight: 600; margin: 18px 0 8px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+  p { margin-bottom: 12px; color: var(--text2); }
+  p:last-child { margin-bottom: 0; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--bg2); padding: 2px 6px; border-radius: 4px; border: 0.5px solid var(--border); color: var(--accent); }
+  pre { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r); padding: 16px; overflow-x: auto; margin: 12px 0; }
+  pre code { background: none; border: none; padding: 0; font-size: 12px; color: var(--text2); }
+  ul, ol { padding-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; color: var(--text2); }
+  strong { color: var(--text); font-weight: 600; }
+
+  /* Hero */
+  .hero { border: 0.5px solid var(--border); border-radius: var(--rl); padding: 28px 32px; margin-bottom: 40px; background: var(--bg2); }
+  .hero-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+  .badge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+  .badge-blue { background: var(--accent-bg); color: var(--accent); }
+  .badge-green { background: var(--success-bg); color: var(--success); }
+  .badge-purple { background: var(--purple-bg); color: var(--purple); }
+  .badge-teal { background: var(--teal-bg); color: var(--teal); }
+  .badge-coral { background: var(--coral-bg); color: var(--coral); }
+
+  /* Cards */
+  .card { border: 0.5px solid var(--border); border-radius: var(--rl); padding: 20px 24px; background: var(--bg); margin-bottom: 16px; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--bg2); border-radius: var(--r); padding: 16px 20px; }
+  .stat-label { font-size: 12px; color: var(--text3); margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 600; color: var(--text); }
+  .stat-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+  th { text-align: left; padding: 8px 12px; background: var(--bg2); color: var(--text); font-weight: 600; border-bottom: 0.5px solid var(--border2); }
+  td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); color: var(--text2); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg2); }
+
+  /* Callouts */
+  .callout { border-radius: var(--r); padding: 14px 18px; margin: 16px 0; border-left: 3px solid; font-size: 14px; }
+  .callout-info { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .callout-warn { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
+  .callout-success { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+  .callout p { color: inherit; margin: 0; }
+
+  /* Architecture diagram containers */
+  .diagram-wrap { border: 0.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin: 20px 0; background: var(--bg2); }
+  .diagram-title { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; padding: 10px 16px; border-bottom: 0.5px solid var(--border); }
+
+  /* Layer boxes */
+  .layer-stack { display: flex; flex-direction: column; gap: 1px; background: var(--border); border: 0.5px solid var(--border); border-radius: var(--rl); overflow: hidden; margin: 16px 0; }
+  .layer { display: flex; align-items: stretch; background: var(--bg); }
+  .layer-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 14px; writing-mode: vertical-rl; transform: rotate(180deg); background: var(--bg2); min-width: 36px; display: flex; align-items: center; justify-content: center; }
+  .layer-content { flex: 1; padding: 14px 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .chip { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--border); background: var(--bg2); color: var(--text2); white-space: nowrap; }
+  .chip-blue { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .chip-green { background: var(--success-bg); border-color: var(--success); color: var(--success); }
+  .chip-purple { background: var(--purple-bg); border-color: var(--purple); color: var(--purple); }
+  .chip-teal { background: var(--teal-bg); border-color: var(--teal); color: var(--teal); }
+  .chip-coral { background: var(--coral-bg); border-color: var(--coral); color: var(--coral); }
+  .chip-warn { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  .flow-box { font-size: 12px; padding: 6px 12px; border-radius: var(--r); border: 0.5px solid var(--border); background: var(--bg2); color: var(--text2); white-space: nowrap; }
+  .flow-arrow { color: var(--text3); font-size: 14px; }
+
+  /* Test matrix */
+  .test-row { display: grid; grid-template-columns: 180px 1fr auto; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .test-row:last-child { border-bottom: none; }
+  .test-name { font-weight: 600; color: var(--text); }
+  .test-desc { color: var(--text2); }
+  .test-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+
+  /* Coverage bar */
+  .cov-bar { height: 6px; border-radius: 3px; background: var(--bg3); overflow: hidden; margin-top: 4px; }
+  .cov-fill { height: 100%; border-radius: 3px; background: var(--success); }
+
+  /* Section anchors */
+  section { scroll-margin-top: 52px; }
+
+  /* Divider */
+  hr { border: none; border-top: 0.5px solid var(--border); margin: 32px 0; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .page { padding: 24px 16px 60px; }
+    .hero { padding: 20px; }
+    .card-grid { grid-template-columns: 1fr 1fr; }
+    .test-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="toc">
+  <div class="toc-inner">
+    <a href="#overview" class="active">Overview</a>
+    <a href="#system-arch">System Architecture</a>
+    <a href="#backend-arch">Backend Architecture</a>
+    <a href="#data-layer">Data Layer</a>
+    <a href="#infra">Infrastructure</a>
+    <a href="#security">Security</a>
+    <a href="#unit-tests">Unit Tests</a>
+    <a href="#regression">Regression Strategy</a>
+    <a href="#ci-cd">CI/CD Pipeline</a>
+    <a href="#observability">Observability</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Hero -->
+  <section id="overview">
+    <div class="hero">
+      <h1>HR Management System — System Design Document</h1>
+      <p style="color:var(--text2);margin-top:8px;margin-bottom:0;">Production-grade architecture reference covering system design, backend internals, and full testing strategy for V1 MVP through V2 release.</p>
+      <div class="hero-meta">
+        <span class="badge badge-blue">Version 1.0</span>
+        <span class="badge badge-green">PostgreSQL 15 · Node.js 20 · TypeScript</span>
+        <span class="badge badge-purple">Multi-tenant SaaS</span>
+        <span class="badge badge-teal">76 DB Tables · ~389 API Endpoints</span>
+        <span class="badge badge-coral">V1 MVP + V2 Full Release</span>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-label">Architecture Pattern</div><div class="stat-value">Layered</div><div class="stat-sub">Service → Repository → DB</div></div>
+      <div class="stat-card"><div class="stat-label">Deployment Target</div><div class="stat-value">Kubernetes</div><div class="stat-sub">AWS EKS / any cloud</div></div>
+      <div class="stat-card"><div class="stat-label">API Style</div><div class="stat-value">REST</div><div class="stat-sub">OpenAPI 3.0 spec</div></div>
+      <div class="stat-card"><div class="stat-label">Auth Strategy</div><div class="stat-value">JWT + SSO</div><div class="stat-sub">MFA, RBAC, refresh rotation</div></div>
+    </div>
+
+    <h3>Document scope</h3>
+    <p>This document covers: (1) high-level system architecture with all component interactions, (2) backend service architecture with layered design, request lifecycle, and key patterns, (3) database and caching layer design, (4) infrastructure and deployment topology, (5) security architecture, (6) unit test strategy with coverage targets and patterns, and (7) regression and end-to-end test automation strategy.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="system-arch">
+    <h2>System Architecture</h2>
+
+    <h3>High-level component overview</h3>
+    <p>The HR system is a multi-tenant SaaS platform. All tenant data is row-isolated by <code>company_id</code>. The platform exposes a single REST API consumed by the web portal, mobile app, and external integrations via API keys and webhooks.</p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">Full system architecture — component view</div>
+      <svg width="100%" viewBox="0 0 880 640" role="img">
+        <title>HR System Full Architecture Diagram</title>
+        <desc>Multi-tier system architecture showing clients, CDN, load balancer, API gateway, backend services, data stores, and background workers</desc>
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+
+        <!-- Clients tier -->
+        <text x="440" y="22" text-anchor="middle" font-size="11" fill="#8a8a84" font-family="system-ui" letter-spacing="0.06em">CLIENTS</text>
+        <g>
+          <rect x="30" y="30" width="120" height="46" rx="8" fill="#e8eefb" stroke="#2a5bd7" stroke-width="0.5"/>
+          <text x="90" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="#2a5bd7" font-family="system-ui">Web Portal</text>
+          <text x="90" y="66" text-anchor="middle" font-size="11" fill="#4a6ab7" font-family="system-ui">React / Next.js</text>
+        </g>
+        <g>
+          <rect x="180" y="30" width="120" height="46" rx="8" fill="#e8eefb" stroke="#2a5bd7" stroke-width="0.5"/>
+          <text x="240" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="#2a5bd7" font-family="system-ui">Mobile App</text>
+          <text x="240" y="66" text-anchor="middle" font-size="11" fill="#4a6ab7" font-family="system-ui">React Native</text>
+        </g>
+        <g>
+          <rect x="330" y="30" width="120" height="46" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="390" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="#4a2ab0" font-family="system-ui">3rd Party</text>
+          <text x="390" y="66" text-anchor="middle" font-size="11" fill="#6a4ad0" font-family="system-ui">API Keys / Webhooks</text>
+        </g>
+        <g>
+          <rect x="480" y="30" width="120" height="46" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="540" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="#4a2ab0" font-family="system-ui">Claude Code</text>
+          <text x="540" y="66" text-anchor="middle" font-size="11" fill="#6a4ad0" font-family="system-ui">Developer CLI</text>
+        </g>
+
+        <!-- CDN + LB -->
+        <text x="440" y="108" text-anchor="middle" font-size="11" fill="#8a8a84" font-family="system-ui" letter-spacing="0.06em">EDGE</text>
+        <g>
+          <rect x="130" y="115" width="130" height="40" rx="8" fill="#fdf3e0" stroke="#7a4a00" stroke-width="0.5"/>
+          <text x="195" y="130" text-anchor="middle" font-size="12" font-weight="600" fill="#7a4a00" font-family="system-ui">CDN / WAF</text>
+          <text x="195" y="146" text-anchor="middle" font-size="11" fill="#7a4a00" font-family="system-ui">CloudFront + WAF</text>
+        </g>
+        <g>
+          <rect x="290" y="115" width="150" height="40" rx="8" fill="#fdf3e0" stroke="#7a4a00" stroke-width="0.5"/>
+          <text x="365" y="130" text-anchor="middle" font-size="12" font-weight="600" fill="#7a4a00" font-family="system-ui">Load Balancer</text>
+          <text x="365" y="146" text-anchor="middle" font-size="11" fill="#7a4a00" font-family="system-ui">ALB + SSL termination</text>
+        </g>
+        <g>
+          <rect x="470" y="115" width="150" height="40" rx="8" fill="#fdf3e0" stroke="#7a4a00" stroke-width="0.5"/>
+          <text x="545" y="130" text-anchor="middle" font-size="12" font-weight="600" fill="#7a4a00" font-family="system-ui">API Gateway</text>
+          <text x="545" y="146" text-anchor="middle" font-size="11" fill="#7a4a00" font-family="system-ui">Rate limit · Auth · Routing</text>
+        </g>
+
+        <!-- Arrows from clients to edge -->
+        <line x1="90" y1="76" x2="190" y2="115" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="240" y1="76" x2="270" y2="115" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="390" y1="76" x2="450" y2="115" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="540" y1="76" x2="545" y2="115" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+
+        <!-- API Services tier -->
+        <text x="440" y="187" text-anchor="middle" font-size="11" fill="#8a8a84" font-family="system-ui" letter-spacing="0.06em">API SERVICES (Kubernetes pods)</text>
+        <g>
+          <rect x="30" y="195" width="145" height="56" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="102" y="217" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">Core API</text>
+          <text x="102" y="233" text-anchor="middle" font-size="11" fill="#0f6e56" font-family="system-ui">Employees · Org · Auth</text>
+          <text x="102" y="245" text-anchor="middle" font-size="10" fill="#1d9e75" font-family="system-ui">Node 20 · Fastify</text>
+        </g>
+        <g>
+          <rect x="195" y="195" width="145" height="56" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="267" y="217" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">Leave & Payroll</text>
+          <text x="267" y="233" text-anchor="middle" font-size="11" fill="#0f6e56" font-family="system-ui">Leave · Attendance · Pay</text>
+          <text x="267" y="245" text-anchor="middle" font-size="10" fill="#1d9e75" font-family="system-ui">Node 20 · Fastify</text>
+        </g>
+        <g>
+          <rect x="360" y="195" width="145" height="56" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="432" y="217" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">Recruiting & Perf</text>
+          <text x="432" y="233" text-anchor="middle" font-size="11" fill="#0f6e56" font-family="system-ui">ATS · Reviews · Goals</text>
+          <text x="432" y="245" text-anchor="middle" font-size="10" fill="#1d9e75" font-family="system-ui">Node 20 · Fastify</text>
+        </g>
+        <g>
+          <rect x="525" y="195" width="145" height="56" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="597" y="217" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">Notifications</text>
+          <text x="597" y="233" text-anchor="middle" font-size="11" fill="#0f6e56" font-family="system-ui">Email · SMS · Push</text>
+          <text x="597" y="245" text-anchor="middle" font-size="10" fill="#1d9e75" font-family="system-ui">Node 20 · Fastify</text>
+        </g>
+        <g>
+          <rect x="690" y="195" width="155" height="56" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="767" y="217" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">Analytics</text>
+          <text x="767" y="233" text-anchor="middle" font-size="11" fill="#0f6e56" font-family="system-ui">Reports · Dashboards</text>
+          <text x="767" y="245" text-anchor="middle" font-size="10" fill="#1d9e75" font-family="system-ui">Node 20 · Fastify</text>
+        </g>
+
+        <!-- Arrow from gateway to services -->
+        <line x1="545" y1="155" x2="430" y2="195" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="545" y1="155" x2="267" y2="195" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="545" y1="155" x2="102" y2="195" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="545" y1="155" x2="597" y2="195" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+        <line x1="545" y1="155" x2="767" y2="195" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr)"/>
+
+        <!-- Message Bus -->
+        <text x="440" y="276" text-anchor="middle" font-size="11" fill="#8a8a84" font-family="system-ui" letter-spacing="0.06em">MESSAGE BUS</text>
+        <g>
+          <rect x="200" y="283" width="480" height="38" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="0.5"/>
+          <text x="440" y="300" text-anchor="middle" font-size="12" font-weight="600" fill="#ba7517" font-family="system-ui">Redis Streams / BullMQ — Job Queue &amp; Pub/Sub</text>
+          <text x="440" y="314" text-anchor="middle" font-size="11" fill="#ba7517" font-family="system-ui">payroll_run · payslip_gen · email_dispatch · report_export · webhook_deliver</text>
+        </g>
+
+        <!-- Arrows services to bus -->
+        <line x1="267" y1="251" x2="300" y2="283" stroke="#8a8a84" stroke-width="0.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+        <line x1="432" y1="251" x2="432" y2="283" stroke="#8a8a84" stroke-width="0.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+        <line x1="597" y1="251" x2="550" y2="283" stroke="#8a8a84" stroke-width="0.5" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+
+        <!-- Worker tier -->
+        <text x="440" y="346" text-anchor="middle" font-size="11" fill="#8a8a84" font-family="system-ui" letter-spacing="0.06em">BACKGROUND WORKERS</text>
+        <g>
+          <rect x="60" y="353" width="140" height="46" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="0.5"/>
+          <text x="130" y="372" text-anchor="middle" font-size="12" font-weight="600" fill="#993c1d" font-family="system-ui">Payroll Worker</text>
+          <text x="130" y="388" text-anchor="middle" font-size="11" fill="#993c1d" font-family="system-ui">Compute · Payslips</text>
+        </g>
+        <g>
+          <rect x="220" y="353" width="140" height="46" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="0.5"/>
+          <text x="290" y="372" text-anchor="middle" font-size="12" font-weight="600" fill="#993c1d" font-family="system-ui">Email Worker</text>
+          <text x="290" y="388" text-anchor="middle" font-size="11" fill="#993c1d" font-family="system-ui">SendGrid / SES</text>
+        </g>
+        <g>
+          <rect x="380" y="353" width="140" height="46" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="0.5"/>
+          <text x="450" y="372" text-anchor="middle" font-size="12" font-weight="600" fill="#993c1d" font-family="system-ui">Report Worker</text>
+          <text x="450" y="388" text-anchor="middle" font-size="11" fill="#993c1d" font-family="system-ui">XLSX · PDF export</text>
+        </g>
+        <g>
+          <rect x="540" y="353" width="140" height="46" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="0.5"/>
+          <text x="610" y="372" text-anchor="middle" font-size="12" font-weight="600" fill="#993c1d" font-family="system-ui">Webhook Worker</text>
+          <text x="610" y="388" text-anchor="middle" font-size="11" fill="#993c1d" font-family="system-ui">HMAC sign · Retry</text>
+        </g>
+        <g>
+          <rect x="700" y="353" width="140" height="46" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="0.5"/>
+          <text x="770" y="372" text-anchor="middle" font-size="12" font-weight="600" fill="#993c1d" font-family="system-ui">Scheduler</text>
+          <text x="770" y="388" text-anchor="middle" font-size="11" fill="#993c1d" font-family="system-ui">Cron · Accruals</text>
+        </g>
+
+        <!-- Bus to workers -->
+        <line x1="295" y1="321" x2="130" y2="353" stroke="#8a8a84" stroke-width="0.5" marker-end="url(#arr)"/>
+        <line x1="330" y1="321" x2="290" y2="353" stroke="#8a8a84" stroke-width="0.5" marker-end="url(#arr)"/>
+        <line x1="440" y1="321" x2="450" y2="353" stroke="#8a8a84" stroke-width="0.5" marker-end="url(#arr)"/>
+        <line x1="550" y1="321" x2="610" y2="353" stroke="#8a8a84" stroke-width="0.5" marker-end="url(#arr)"/>
+        <line x1="620" y1="321" x2="770" y2="353" stroke="#8a8a84" stroke-width="0.5" marker-end="url(#arr)"/>
+
+        <!-- Data stores -->
+        <text x="440" y="424" text-anchor="middle" font-size="11" fill="#8a8a84" font-family="system-ui" letter-spacing="0.06em">DATA STORES</text>
+        <g>
+          <rect x="30" y="431" width="200" height="52" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="130" y="452" text-anchor="middle" font-size="13" font-weight="600" fill="#4a2ab0" font-family="system-ui">PostgreSQL 15</text>
+          <text x="130" y="468" text-anchor="middle" font-size="11" fill="#4a2ab0" font-family="system-ui">Primary + Read Replica</text>
+          <text x="130" y="479" text-anchor="middle" font-size="10" fill="#6a4ad0" font-family="system-ui">RDS Multi-AZ · Prisma ORM</text>
+        </g>
+        <g>
+          <rect x="250" y="431" width="180" height="52" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="340" y="452" text-anchor="middle" font-size="13" font-weight="600" fill="#4a2ab0" font-family="system-ui">Redis 7</text>
+          <text x="340" y="468" text-anchor="middle" font-size="11" fill="#4a2ab0" font-family="system-ui">Cache · Sessions · Queues</text>
+          <text x="340" y="479" text-anchor="middle" font-size="10" fill="#6a4ad0" font-family="system-ui">ElastiCache Cluster</text>
+        </g>
+        <g>
+          <rect x="450" y="431" width="180" height="52" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="540" y="452" text-anchor="middle" font-size="13" font-weight="600" fill="#4a2ab0" font-family="system-ui">S3 / Object Store</text>
+          <text x="540" y="468" text-anchor="middle" font-size="11" fill="#4a2ab0" font-family="system-ui">Docs · Payslips · Exports</text>
+          <text x="540" y="479" text-anchor="middle" font-size="10" fill="#6a4ad0" font-family="system-ui">Signed URLs · Lifecycle</text>
+        </g>
+        <g>
+          <rect x="650" y="431" width="195" height="52" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="747" y="452" text-anchor="middle" font-size="13" font-weight="600" fill="#4a2ab0" font-family="system-ui">OpenSearch</text>
+          <text x="747" y="468" text-anchor="middle" font-size="11" fill="#4a2ab0" font-family="system-ui">Candidate · Employee FTS</text>
+          <text x="747" y="479" text-anchor="middle" font-size="10" fill="#6a4ad0" font-family="system-ui">Full-text search · V2</text>
+        </g>
+
+        <!-- Workers to stores -->
+        <line x1="130" y1="399" x2="130" y2="431" stroke="#8a8a84" stroke-width="0.5" marker-end="url(#arr)"/>
+        <line x1="290" y1="399" x2="300" y2="431" stroke="#8a8a84" stroke-width="0.5" marker-end="url(#arr)"/>
+        <line x1="450" y1="399" x2="480" y2="431" stroke="#8a8a84" stroke-width="0.5" marker-end="url(#arr)"/>
+
+        <!-- Observability -->
+        <text x="440" y="508" text-anchor="middle" font-size="11" fill="#8a8a84" font-family="system-ui" letter-spacing="0.06em">OBSERVABILITY</text>
+        <g>
+          <rect x="80" y="515" width="175" height="40" rx="8" fill="#e6f4ec" stroke="#1a7a4a" stroke-width="0.5"/>
+          <text x="167" y="531" text-anchor="middle" font-size="12" font-weight="600" fill="#1a7a4a" font-family="system-ui">Metrics</text>
+          <text x="167" y="547" text-anchor="middle" font-size="11" fill="#1a7a4a" font-family="system-ui">Prometheus · Grafana</text>
+        </g>
+        <g>
+          <rect x="275" y="515" width="175" height="40" rx="8" fill="#e6f4ec" stroke="#1a7a4a" stroke-width="0.5"/>
+          <text x="362" y="531" text-anchor="middle" font-size="12" font-weight="600" fill="#1a7a4a" font-family="system-ui">Tracing</text>
+          <text x="362" y="547" text-anchor="middle" font-size="11" fill="#1a7a4a" font-family="system-ui">OpenTelemetry · Jaeger</text>
+        </g>
+        <g>
+          <rect x="470" y="515" width="175" height="40" rx="8" fill="#e6f4ec" stroke="#1a7a4a" stroke-width="0.5"/>
+          <text x="557" y="531" text-anchor="middle" font-size="12" font-weight="600" fill="#1a7a4a" font-family="system-ui">Logs</text>
+          <text x="557" y="547" text-anchor="middle" font-size="11" fill="#1a7a4a" font-family="system-ui">Structured · CloudWatch</text>
+        </g>
+        <g>
+          <rect x="665" y="515" width="175" height="40" rx="8" fill="#e6f4ec" stroke="#1a7a4a" stroke-width="0.5"/>
+          <text x="752" y="531" text-anchor="middle" font-size="12" font-weight="600" fill="#1a7a4a" font-family="system-ui">Alerting</text>
+          <text x="752" y="547" text-anchor="middle" font-size="11" fill="#1a7a4a" font-family="system-ui">PagerDuty · Slack</text>
+        </g>
+
+        <!-- Legend -->
+        <rect x="30" y="575" width="12" height="10" rx="2" fill="#e8eefb" stroke="#2a5bd7" stroke-width="0.5"/>
+        <text x="46" y="584" font-size="10" fill="#8a8a84" font-family="system-ui">Clients</text>
+        <rect x="105" y="575" width="12" height="10" rx="2" fill="#fdf3e0" stroke="#7a4a00" stroke-width="0.5"/>
+        <text x="121" y="584" font-size="10" fill="#8a8a84" font-family="system-ui">Edge</text>
+        <rect x="170" y="575" width="12" height="10" rx="2" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+        <text x="186" y="584" font-size="10" fill="#8a8a84" font-family="system-ui">Services</text>
+        <rect x="250" y="575" width="12" height="10" rx="2" fill="#faeeda" stroke="#ba7517" stroke-width="0.5"/>
+        <text x="266" y="584" font-size="10" fill="#8a8a84" font-family="system-ui">Queue</text>
+        <rect x="325" y="575" width="12" height="10" rx="2" fill="#faece7" stroke="#993c1d" stroke-width="0.5"/>
+        <text x="341" y="584" font-size="10" fill="#8a8a84" font-family="system-ui">Workers</text>
+        <rect x="410" y="575" width="12" height="10" rx="2" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+        <text x="426" y="584" font-size="10" fill="#8a8a84" font-family="system-ui">Data</text>
+        <rect x="475" y="575" width="12" height="10" rx="2" fill="#e6f4ec" stroke="#1a7a4a" stroke-width="0.5"/>
+        <text x="491" y="584" font-size="10" fill="#8a8a84" font-family="system-ui">Observability</text>
+      </svg>
+    </div>
+
+    <h3>Multi-tenancy model</h3>
+    <p>Every table carries a <code>company_id</code> UUID column. All queries are scoped at the service layer — the <code>RequestContext</code> injects <code>companyId</code> from the JWT claim before any DB access. A Prisma middleware extension enforces the tenant filter automatically, making it impossible to accidentally return cross-tenant data.</p>
+
+    <div class="callout callout-info">
+      <p><strong>Tenant isolation guarantee:</strong> The base Prisma client is wrapped in a <code>withTenantScope(ctx)</code> extension that appends <code>WHERE company_id = $1</code> to every query. Service layer unit tests verify this wrapper is called on all repository methods.</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="backend-arch">
+    <h2>Backend Architecture</h2>
+
+    <h3>Layered architecture</h3>
+    <p>Each API service follows a strict four-layer architecture. Dependencies only flow downward — controllers never touch repositories directly, and repositories never contain business logic.</p>
+
+    <div class="layer-stack">
+      <div class="layer">
+        <div class="layer-label">HTTP</div>
+        <div class="layer-content">
+          <span class="chip chip-blue">Route handlers</span>
+          <span class="chip chip-blue">Request validation (Zod)</span>
+          <span class="chip chip-blue">Auth middleware (JWT verify)</span>
+          <span class="chip chip-blue">Rate limit middleware</span>
+          <span class="chip chip-blue">Audit log middleware</span>
+          <span class="chip chip-blue">Response serialization</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label">Service</div>
+        <div class="layer-content">
+          <span class="chip chip-teal">Business logic</span>
+          <span class="chip chip-teal">Permission checks</span>
+          <span class="chip chip-teal">Domain events emission</span>
+          <span class="chip chip-teal">Transaction orchestration</span>
+          <span class="chip chip-teal">Notification triggers</span>
+          <span class="chip chip-teal">Workflow state machine</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label">Repository</div>
+        <div class="layer-content">
+          <span class="chip chip-purple">Prisma queries</span>
+          <span class="chip chip-purple">Tenant scope injection</span>
+          <span class="chip chip-purple">Query building</span>
+          <span class="chip chip-purple">Cursor pagination</span>
+          <span class="chip chip-purple">Cache read-through</span>
+          <span class="chip chip-purple">Cache invalidation</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label">Data</div>
+        <div class="layer-content">
+          <span class="chip chip-coral">PostgreSQL (Prisma)</span>
+          <span class="chip chip-coral">Redis (ioredis)</span>
+          <span class="chip chip-coral">S3 (AWS SDK v3)</span>
+          <span class="chip chip-coral">BullMQ queues</span>
+          <span class="chip chip-coral">OpenSearch client</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Request lifecycle</h3>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">Authenticated API request — end-to-end flow</div>
+      <svg width="100%" viewBox="0 0 880 200" role="img">
+        <title>API Request Lifecycle Flow</title>
+        <desc>Sequential flow showing how an API request passes through middleware, validation, service, repository, database and back</desc>
+        <defs>
+          <marker id="arr2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <!-- Steps -->
+        <g>
+          <rect x="20" y="60" width="100" height="52" rx="8" fill="#e8eefb" stroke="#2a5bd7" stroke-width="0.5"/>
+          <text x="70" y="81" text-anchor="middle" font-size="12" font-weight="600" fill="#2a5bd7" font-family="system-ui">Client</text>
+          <text x="70" y="97" text-anchor="middle" font-size="10" fill="#4a6ab7" font-family="system-ui">HTTPS request</text>
+          <text x="70" y="109" text-anchor="middle" font-size="10" fill="#4a6ab7" font-family="system-ui">Bearer token</text>
+        </g>
+        <line x1="120" y1="86" x2="138" y2="86" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <g>
+          <rect x="138" y="60" width="100" height="52" rx="8" fill="#fdf3e0" stroke="#7a4a00" stroke-width="0.5"/>
+          <text x="188" y="81" text-anchor="middle" font-size="12" font-weight="600" fill="#7a4a00" font-family="system-ui">Auth MW</text>
+          <text x="188" y="97" text-anchor="middle" font-size="10" fill="#7a4a00" font-family="system-ui">JWT verify</text>
+          <text x="188" y="109" text-anchor="middle" font-size="10" fill="#7a4a00" font-family="system-ui">ctx inject</text>
+        </g>
+        <line x1="238" y1="86" x2="256" y2="86" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <g>
+          <rect x="256" y="60" width="100" height="52" rx="8" fill="#fdf3e0" stroke="#7a4a00" stroke-width="0.5"/>
+          <text x="306" y="81" text-anchor="middle" font-size="12" font-weight="600" fill="#7a4a00" font-family="system-ui">Zod</text>
+          <text x="306" y="97" text-anchor="middle" font-size="10" fill="#7a4a00" font-family="system-ui">Body / query</text>
+          <text x="306" y="109" text-anchor="middle" font-size="10" fill="#7a4a00" font-family="system-ui">validation</text>
+        </g>
+        <line x1="356" y1="86" x2="374" y2="86" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <g>
+          <rect x="374" y="60" width="100" height="52" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="424" y="81" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">Handler</text>
+          <text x="424" y="97" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">Route logic</text>
+          <text x="424" y="109" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">→ Service call</text>
+        </g>
+        <line x1="474" y1="86" x2="492" y2="86" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <g>
+          <rect x="492" y="60" width="100" height="52" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="542" y="81" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">Service</text>
+          <text x="542" y="97" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">Business logic</text>
+          <text x="542" y="109" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">Perm checks</text>
+        </g>
+        <line x1="592" y1="86" x2="610" y2="86" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <g>
+          <rect x="610" y="60" width="110" height="52" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="665" y="81" text-anchor="middle" font-size="12" font-weight="600" fill="#4a2ab0" font-family="system-ui">Repository</text>
+          <text x="665" y="97" text-anchor="middle" font-size="10" fill="#4a2ab0" font-family="system-ui">Prisma query</text>
+          <text x="665" y="109" text-anchor="middle" font-size="10" fill="#4a2ab0" font-family="system-ui">Redis cache</text>
+        </g>
+        <line x1="720" y1="86" x2="738" y2="86" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <g>
+          <rect x="738" y="60" width="110" height="52" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="793" y="81" text-anchor="middle" font-size="12" font-weight="600" fill="#4a2ab0" font-family="system-ui">PostgreSQL</text>
+          <text x="793" y="97" text-anchor="middle" font-size="10" fill="#4a2ab0" font-family="system-ui">Tenant-scoped</text>
+          <text x="793" y="109" text-anchor="middle" font-size="10" fill="#4a2ab0" font-family="system-ui">SQL query</text>
+        </g>
+
+        <!-- Audit log branch -->
+        <line x1="424" y1="112" x2="424" y2="155" stroke="#ba7517" stroke-width="0.5" stroke-dasharray="4 3" marker-end="url(#arr2)"/>
+        <g>
+          <rect x="360" y="155" width="128" height="36" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="0.5"/>
+          <text x="424" y="170" text-anchor="middle" font-size="11" font-weight="600" fill="#ba7517" font-family="system-ui">Audit Log MW</text>
+          <text x="424" y="184" text-anchor="middle" font-size="10" fill="#ba7517" font-family="system-ui">Async · Append-only</text>
+        </g>
+
+        <!-- Response arrow back -->
+        <path d="M848 126 C848 145 70 145 70 126" fill="none" stroke="#8a8a84" stroke-width="0.5" stroke-dasharray="5 3" marker-end="url(#arr2)"/>
+        <text x="460" y="163" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">← JSON response</text>
+      </svg>
+    </div>
+
+    <h3>Key backend patterns</h3>
+
+    <div class="card-grid" style="grid-template-columns: repeat(auto-fit,minmax(280px,1fr))">
+      <div class="card">
+        <h4>Repository pattern</h4>
+        <p>Every domain entity has a typed repository class implementing the <code>Repository&lt;T&gt;</code> interface. Services depend on the interface, not the concrete class, enabling easy test mocking.</p>
+        <pre><code>class EmployeeRepository {
+  findById(id: string, companyId: string)
+  findMany(companyId: string, params)
+  create(companyId: string, data, actorId)
+  update(id, companyId, data, actorId)
+  softDelete(id, companyId, actorId)
+}</code></pre>
+      </div>
+      <div class="card">
+        <h4>Domain events</h4>
+        <p>State changes emit typed domain events via an in-process EventEmitter. Async side effects (emails, webhooks, audit entries) are handled by listeners — never inside the service method itself.</p>
+        <pre><code>// Service emits
+events.emit('employee.hired', { 
+  companyId, employeeId, actorId 
+})
+// Listener reacts
+on('employee.hired', async (ev) => {
+  await queue.add('send_welcome', ev)
+  await queue.add('webhook_emit', ev)
+})</code></pre>
+      </div>
+      <div class="card">
+        <h4>Transaction management</h4>
+        <p>Multi-step writes use Prisma interactive transactions. The repository receives a <code>tx</code> handle optionally; if absent it uses the default client. Services orchestrate transaction boundaries explicitly.</p>
+        <pre><code>await prisma.$transaction(async (tx) => {
+  await salaryRepo.create(data, tx)
+  await historyRepo.append(event, tx)
+  await auditRepo.log(entry, tx)
+})</code></pre>
+      </div>
+      <div class="card">
+        <h4>Approval workflow engine</h4>
+        <p>All multi-step approvals (leave, payroll, expenses) use a generic state machine. Transitions are validated against allowed states before persistence, and transition events trigger the notification queue.</p>
+        <pre><code>const machine = new WorkflowMachine({
+  states: ['pending','approved','rejected'],
+  transitions: {
+    approve: { from: 'pending', to: 'approved' },
+    reject:  { from: 'pending', to: 'rejected' }
+  }
+})
+await machine.transition(leaveReq, 'approve', actor)</code></pre>
+      </div>
+    </div>
+
+    <h3>Caching strategy</h3>
+    <table>
+      <thead><tr><th>Resource</th><th>Cache Type</th><th>TTL</th><th>Invalidation trigger</th></tr></thead>
+      <tbody>
+        <tr><td>Employee profile</td><td>Redis key-value</td><td>5 min</td><td>Employee update / delete</td></tr>
+        <tr><td>Org chart tree</td><td>Redis key-value</td><td>10 min</td><td>Dept change / transfer</td></tr>
+        <tr><td>Leave balances</td><td>Redis key-value</td><td>2 min</td><td>Leave approve / accrue</td></tr>
+        <tr><td>RBAC permissions</td><td>Redis hash per user</td><td>15 min</td><td>Role assignment change</td></tr>
+        <tr><td>Company settings</td><td>In-process LRU</td><td>30 min</td><td>Settings update</td></tr>
+        <tr><td>Payslip PDF URLs</td><td>Redis (signed URL)</td><td>60 min</td><td>New payroll cycle</td></tr>
+        <tr><td>Holiday calendar</td><td>Redis key-value</td><td>24 h</td><td>Holiday CRUD</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Async job processing</h3>
+    <p>BullMQ backed by Redis handles all async work. Each job type has its own named queue with concurrency limits, retry configuration, and dead-letter handling. The <code>background_jobs</code> table mirrors queue state for HR audit visibility.</p>
+    <div class="card">
+      <table style="margin:0">
+        <thead><tr><th>Queue</th><th>Concurrency</th><th>Retries</th><th>Max delay</th><th>DLQ action</th></tr></thead>
+        <tbody>
+          <tr><td><code>payroll_run</code></td><td>1 per company</td><td>3</td><td>30 min</td><td>Alert + manual retry</td></tr>
+          <tr><td><code>payslip_gen</code></td><td>10</td><td>3</td><td>5 min</td><td>Mark failed, notify HR</td></tr>
+          <tr><td><code>email_dispatch</code></td><td>50</td><td>5</td><td>10 min</td><td>Log + skip</td></tr>
+          <tr><td><code>report_export</code></td><td>5</td><td>2</td><td>15 min</td><td>Notify requester</td></tr>
+          <tr><td><code>webhook_deliver</code></td><td>20</td><td>5</td><td>60 min exponential</td><td>Disable webhook after 10 fails</td></tr>
+          <tr><td><code>bulk_import</code></td><td>3</td><td>1</td><td>5 min</td><td>Return error rows to user</td></tr>
+          <tr><td><code>leave_accrue</code></td><td>1</td><td>3</td><td>1 h</td><td>Alert + re-run next day</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="data-layer">
+    <h2>Data Layer</h2>
+
+    <h3>Database topology</h3>
+    <div class="diagram-wrap">
+      <div class="diagram-title">PostgreSQL topology — primary / replica / connection pooling</div>
+      <svg width="100%" viewBox="0 0 880 200" role="img">
+        <title>PostgreSQL Database Topology</title>
+        <desc>Database topology showing API services connecting to PgBouncer connection pooler, which routes writes to primary and reads to replica</desc>
+        <defs>
+          <marker id="arr3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <g>
+          <rect x="30" y="60" width="180" height="56" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="120" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">API Services</text>
+          <text x="120" y="98" text-anchor="middle" font-size="11" fill="#0f6e56" font-family="system-ui">Core · Payroll · Recruiting</text>
+          <text x="120" y="110" text-anchor="middle" font-size="10" fill="#1d9e75" font-family="system-ui">Prisma ORM</text>
+        </g>
+        <g>
+          <rect x="280" y="60" width="150" height="56" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="0.5"/>
+          <text x="355" y="82" text-anchor="middle" font-size="12" font-weight="600" fill="#ba7517" font-family="system-ui">PgBouncer</text>
+          <text x="355" y="98" text-anchor="middle" font-size="11" fill="#ba7517" font-family="system-ui">Connection pool</text>
+          <text x="355" y="110" text-anchor="middle" font-size="10" fill="#ba7517" font-family="system-ui">Transaction mode · 200 max</text>
+        </g>
+        <line x1="210" y1="88" x2="280" y2="88" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr3)"/>
+
+        <g>
+          <rect x="510" y="30" width="160" height="60" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="590" y="52" text-anchor="middle" font-size="12" font-weight="600" fill="#4a2ab0" font-family="system-ui">Primary (RW)</text>
+          <text x="590" y="68" text-anchor="middle" font-size="11" fill="#4a2ab0" font-family="system-ui">Writes · reads</text>
+          <text x="590" y="80" text-anchor="middle" font-size="10" fill="#6a4ad0" font-family="system-ui">Multi-AZ · RDS</text>
+        </g>
+        <g>
+          <rect x="510" y="115" width="160" height="60" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="590" y="137" text-anchor="middle" font-size="12" font-weight="600" fill="#4a2ab0" font-family="system-ui">Read Replica</text>
+          <text x="590" y="153" text-anchor="middle" font-size="11" fill="#4a2ab0" font-family="system-ui">Reports · analytics</text>
+          <text x="590" y="165" text-anchor="middle" font-size="10" fill="#6a4ad0" font-family="system-ui">Async streaming repl.</text>
+        </g>
+        <line x1="430" y1="78" x2="510" y2="58" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr3)"/>
+        <line x1="430" y1="100" x2="510" y2="140" stroke="#8a8a84" stroke-width="0.5" stroke-dasharray="4 3" marker-end="url(#arr3)"/>
+        <text x="460" y="73" font-size="10" fill="#0f6e56" font-family="system-ui">writes</text>
+        <text x="455" y="118" font-size="10" fill="#8a8a84" font-family="system-ui">reads</text>
+
+        <g>
+          <rect x="730" y="65" width="130" height="52" rx="8" fill="#e6f4ec" stroke="#1a7a4a" stroke-width="0.5"/>
+          <text x="795" y="86" text-anchor="middle" font-size="12" font-weight="600" fill="#1a7a4a" font-family="system-ui">Point-in-time</text>
+          <text x="795" y="102" text-anchor="middle" font-size="11" fill="#1a7a4a" font-family="system-ui">S3 WAL backup</text>
+          <text x="795" y="114" text-anchor="middle" font-size="10" fill="#1a7a4a" font-family="system-ui">RPO: 5 min · RTO: 30 min</text>
+        </g>
+        <line x1="670" y1="60" x2="730" y2="90" stroke="#8a8a84" stroke-width="0.5" stroke-dasharray="4 3" marker-end="url(#arr3)"/>
+      </svg>
+    </div>
+
+    <h3>Key database design decisions</h3>
+    <table>
+      <thead><tr><th>Decision</th><th>Choice</th><th>Rationale</th></tr></thead>
+      <tbody>
+        <tr><td>Primary keys</td><td>UUID v4</td><td>No sequential ID leakage; safe to expose in URLs; merge-safe across environments</td></tr>
+        <tr><td>Soft deletes</td><td><code>deleted_at TIMESTAMPTZ</code></td><td>HR data must never be hard-deleted; supports compliance, audit, and undo</td></tr>
+        <tr><td>Tenant isolation</td><td>Row-level via <code>company_id</code></td><td>Simpler ops than schema-per-tenant; Prisma middleware enforces automatically</td></tr>
+        <tr><td>Audit log partitioning</td><td>Monthly range partitions</td><td>Audit log grows unboundedly; partitions enable fast drops of old data and faster queries</td></tr>
+        <tr><td>Generated columns</td><td><code>closing_days</code> on leave_balances</td><td>Eliminates update anomalies; balance is always consistent with its components</td></tr>
+        <tr><td>JSONB fields</td><td><code>custom_fields</code>, <code>responses</code>, <code>declaration_data</code></td><td>Extensible without schema migrations; GIN-indexed for fast search</td></tr>
+        <tr><td>Timestamps</td><td>All <code>TIMESTAMPTZ</code> in UTC</td><td>Timezone-safe; display conversion in app layer per user timezone</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="infra">
+    <h2>Infrastructure & Deployment</h2>
+
+    <h3>Kubernetes deployment topology</h3>
+    <div class="layer-stack">
+      <div class="layer">
+        <div class="layer-label" style="background:var(--coral-bg);color:var(--coral)">Prod</div>
+        <div class="layer-content">
+          <span class="chip chip-coral">EKS cluster (3 AZ)</span>
+          <span class="chip chip-coral">Horizontal Pod Autoscaler</span>
+          <span class="chip chip-coral">Cluster Autoscaler</span>
+          <span class="chip chip-coral">Pod Disruption Budgets</span>
+          <span class="chip chip-coral">Istio service mesh</span>
+          <span class="chip chip-coral">External Secrets Operator</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label" style="background:var(--teal-bg);color:var(--teal)">Staging</div>
+        <div class="layer-content">
+          <span class="chip chip-teal">Namespace isolation</span>
+          <span class="chip chip-teal">Production parity config</span>
+          <span class="chip chip-teal">Synthetic data seeded</span>
+          <span class="chip chip-teal">Full regression suite runs here</span>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-label" style="background:var(--accent-bg);color:var(--accent)">Dev</div>
+        <div class="layer-content">
+          <span class="chip chip-blue">Docker Compose local</span>
+          <span class="chip chip-blue">Postgres + Redis + Minio</span>
+          <span class="chip chip-blue">Mailhog (email capture)</span>
+          <span class="chip chip-blue">Hot reload + source maps</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Service sizing (V1 baseline)</h3>
+    <table>
+      <thead><tr><th>Service</th><th>Replicas</th><th>CPU req/limit</th><th>Mem req/limit</th><th>HPA target</th></tr></thead>
+      <tbody>
+        <tr><td>Core API</td><td>3–10</td><td>250m / 500m</td><td>256Mi / 512Mi</td><td>70% CPU</td></tr>
+        <tr><td>Leave & Payroll API</td><td>2–8</td><td>250m / 500m</td><td>256Mi / 512Mi</td><td>70% CPU</td></tr>
+        <tr><td>Notifications API</td><td>2–6</td><td>100m / 250m</td><td>128Mi / 256Mi</td><td>60% CPU</td></tr>
+        <tr><td>Payroll Worker</td><td>1–4</td><td>500m / 1</td><td>512Mi / 1Gi</td><td>Queue depth</td></tr>
+        <tr><td>Email Worker</td><td>2–8</td><td>100m / 250m</td><td>128Mi / 256Mi</td><td>Queue depth</td></tr>
+        <tr><td>Report Worker</td><td>1–4</td><td>500m / 2</td><td>1Gi / 2Gi</td><td>Queue depth</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="security">
+    <h2>Security Architecture</h2>
+
+    <div class="card-grid" style="grid-template-columns: repeat(auto-fit,minmax(250px,1fr))">
+      <div class="card">
+        <h4>Authentication flow</h4>
+        <div class="flow">
+          <div class="flow-box">POST /auth/login</div><div class="flow-arrow">→</div>
+          <div class="flow-box">Argon2 verify</div><div class="flow-arrow">→</div>
+          <div class="flow-box">Sign JWT (15 min)</div>
+        </div>
+        <div class="flow" style="margin-top:6px">
+          <div class="flow-box">Issue refresh (7d)</div><div class="flow-arrow">→</div>
+          <div class="flow-box">HttpOnly cookie</div>
+        </div>
+        <p style="margin-top:10px;font-size:13px">JWT carries: <code>sub</code> (userId), <code>companyId</code>, <code>roles[]</code>. Refresh rotation on every use — old token immediately revoked in Redis.</p>
+      </div>
+      <div class="card">
+        <h4>PII encryption</h4>
+        <p style="font-size:13px">Sensitive fields (national ID, passport, bank account number, TOTP secret) are encrypted at the application layer using AES-256-GCM before writing to PostgreSQL. The encryption key is stored in AWS Secrets Manager and rotated quarterly.</p>
+        <pre><code>// Field-level encryption
+const encrypted = await encrypt(
+  plaintext,
+  await getDataKey(companyId)
+)
+// Stored as base64(iv + ciphertext + tag)</code></pre>
+      </div>
+      <div class="card">
+        <h4>RBAC enforcement</h4>
+        <p style="font-size:13px">Every service method begins with a permission check via the <code>AuthorizationService</code>. Permissions are loaded from Redis (15 min TTL) and checked against the request context. Three scopes: <code>company</code>, <code>department</code>, <code>self</code>.</p>
+        <pre><code>await authz.require(ctx, {
+  resource: 'employee',
+  action: 'read',
+  scope: 'department',
+  subjectId: targetEmployeeId
+})</code></pre>
+      </div>
+      <div class="card">
+        <h4>Webhook security</h4>
+        <p style="font-size:13px">All outbound webhooks are signed with HMAC-SHA256 using a per-webhook secret. Recipients verify the <code>X-HR-Signature-256</code> header. Delivery uses TLS 1.3+ only. Payloads never include PII — only resource IDs and event metadata.</p>
+        <pre><code>const sig = 'sha256=' + 
+  hmac('sha256', secret)
+    .update(body)
+    .digest('hex')</code></pre>
+      </div>
+    </div>
+
+    <h3>Security checklist</h3>
+    <table>
+      <thead><tr><th>Control</th><th>Implementation</th><th>Phase</th></tr></thead>
+      <tbody>
+        <tr><td>Input validation</td><td>Zod schemas on every endpoint, no raw DB input</td><td><span class="badge badge-green">V1</span></td></tr>
+        <tr><td>SQL injection</td><td>Prisma parameterized queries only; no raw SQL in services</td><td><span class="badge badge-green">V1</span></td></tr>
+        <tr><td>Rate limiting</td><td>100 req/min per IP (unauthenticated), 500 req/min per user</td><td><span class="badge badge-green">V1</span></td></tr>
+        <tr><td>CORS</td><td>Allowlist of known origins; credentials flag per domain</td><td><span class="badge badge-green">V1</span></td></tr>
+        <tr><td>WAF</td><td>AWS WAF with OWASP rule set in front of ALB</td><td><span class="badge badge-green">V1</span></td></tr>
+        <tr><td>Secret scanning</td><td>Trufflehog in CI pre-commit and PR checks</td><td><span class="badge badge-green">V1</span></td></tr>
+        <tr><td>Dependency audit</td><td><code>npm audit</code> and Snyk in CI on every push</td><td><span class="badge badge-green">V1</span></td></tr>
+        <tr><td>GDPR — data export</td><td>Employee data export endpoint; 30-day deletion workflow</td><td><span class="badge badge-blue">V2</span></td></tr>
+        <tr><td>SOC 2 controls</td><td>Access log review, MFA enforcement, change management</td><td><span class="badge badge-blue">V2</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="unit-tests">
+    <h2>Unit Test Strategy</h2>
+
+    <h3>Philosophy and tooling</h3>
+    <div class="callout callout-success">
+      <p><strong>Testing rule:</strong> Unit tests are fast, deterministic, and isolated. No real database, no real Redis, no HTTP calls. Dependencies are mocked at the boundary of the layer under test. Test one thing per test.</p>
+    </div>
+
+    <div class="card-grid" style="grid-template-columns: repeat(auto-fit,minmax(180px,1fr))">
+      <div class="stat-card"><div class="stat-label">Test runner</div><div class="stat-value" style="font-size:16px">Vitest</div><div class="stat-sub">Fast ESM, HMR watch</div></div>
+      <div class="stat-card"><div class="stat-label">Mocking</div><div class="stat-value" style="font-size:16px">vi.mock()</div><div class="stat-sub">Auto-mock + manual</div></div>
+      <div class="stat-card"><div class="stat-label">Coverage tool</div><div class="stat-value" style="font-size:16px">Istanbul</div><div class="stat-sub">Built into Vitest</div></div>
+      <div class="stat-card"><div class="stat-label">Assertion</div><div class="stat-value" style="font-size:16px">expect()</div><div class="stat-sub">Vitest native</div></div>
+      <div class="stat-card"><div class="stat-label">DB fixtures</div><div class="stat-value" style="font-size:16px">Builders</div><div class="stat-sub">Factory pattern</div></div>
+    </div>
+
+    <h3>Coverage targets</h3>
+    <table>
+      <thead><tr><th>Layer</th><th>Target</th><th>Enforced in CI</th><th>Scope</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Service layer</strong></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>90%</span>
+              <div style="flex:1;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden"><div style="width:90%;height:100%;background:var(--success);border-radius:3px"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-green">Yes — blocks merge</span></td>
+          <td>All business logic, permission checks, state transitions</td>
+        </tr>
+        <tr>
+          <td><strong>Repository layer</strong></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>80%</span>
+              <div style="flex:1;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden"><div style="width:80%;height:100%;background:var(--success);border-radius:3px"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-green">Yes — blocks merge</span></td>
+          <td>Query building, pagination, tenant scope injection</td>
+        </tr>
+        <tr>
+          <td><strong>Utility functions</strong></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>95%</span>
+              <div style="flex:1;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden"><div style="width:95%;height:100%;background:var(--success);border-radius:3px"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-green">Yes — blocks merge</span></td>
+          <td>Salary computation, leave accrual, date helpers, validators</td>
+        </tr>
+        <tr>
+          <td><strong>Route handlers</strong></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>70%</span>
+              <div style="flex:1;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden"><div style="width:70%;height:100%;background:var(--warn);border-radius:3px"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-blue">Warning only</span></td>
+          <td>Request parsing, error formatting (covered mainly in integration)</td>
+        </tr>
+        <tr>
+          <td><strong>Middleware</strong></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>85%</span>
+              <div style="flex:1;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden"><div style="width:85%;height:100%;background:var(--success);border-radius:3px"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-green">Yes — blocks merge</span></td>
+          <td>Auth, rate limit, audit logging</td>
+        </tr>
+        <tr>
+          <td><strong>Worker processors</strong></td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span>85%</span>
+              <div style="flex:1;height:6px;border-radius:3px;background:var(--bg3);overflow:hidden"><div style="width:85%;height:100%;background:var(--success);border-radius:3px"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-green">Yes — blocks merge</span></td>
+          <td>Payroll compute logic, email template rendering, export generation</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Unit test patterns by domain</h3>
+
+    <div class="card">
+      <h4>Service layer tests — happy path + all error branches</h4>
+      <pre><code>describe('LeaveService.applyForLeave', () => {
+  let service: LeaveService
+  let leaveRepo: MockLeaveRepository
+  let balanceRepo: MockBalanceRepository
+  let events: MockEventEmitter
+
+  beforeEach(() => {
+    leaveRepo = createMockLeaveRepository()
+    balanceRepo = createMockBalanceRepository()
+    events = createMockEventEmitter()
+    service = new LeaveService(leaveRepo, balanceRepo, events)
+  })
+
+  it('creates leave request when balance is sufficient', async () => {
+    balanceRepo.getBalance.mockResolvedValue({ closingDays: 10 })
+    leaveRepo.create.mockResolvedValue(buildLeaveRequest())
+
+    const result = await service.applyForLeave(ctx, validInput)
+
+    expect(result.status).toBe('pending')
+    expect(leaveRepo.create).toHaveBeenCalledWith(ctx.companyId, validInput, ctx.userId)
+    expect(events.emit).toHaveBeenCalledWith('leave.requested', expect.objectContaining({
+      employeeId: validInput.employeeId
+    }))
+  })
+
+  it('throws InsufficientBalanceError when balance is zero', async () => {
+    balanceRepo.getBalance.mockResolvedValue({ closingDays: 0 })
+    await expect(service.applyForLeave(ctx, validInput))
+      .rejects.toThrow(InsufficientBalanceError)
+  })
+
+  it('throws HolidayConflictError when dates overlap a holiday', async () => {
+    balanceRepo.getBalance.mockResolvedValue({ closingDays: 10 })
+    holidayRepo.hasHoliday.mockResolvedValue(true)
+    await expect(service.applyForLeave(ctx, validInput))
+      .rejects.toThrow(HolidayConflictError)
+  })
+})</code></pre>
+    </div>
+
+    <div class="card">
+      <h4>Payroll computation — property-based + snapshot tests</h4>
+      <pre><code>describe('PayrollEngine.computeEntry', () => {
+  it('net pay = gross - total deductions always', () => {
+    fc.assert(fc.property(
+      fc.record({ grossPay: fc.float({ min: 0, max: 500000 }), deductions: fc.array(fc.float({ min: 0 })) }),
+      ({ grossPay, deductions }) => {
+        const entry = computeEntry({ grossPay, deductions })
+        return Math.abs(entry.netPay - (grossPay - sum(deductions))) < 0.01
+      }
+    ))
+  })
+
+  it('matches snapshot for standard salary structure', () => {
+    const result = computeEntry({
+      components: [
+        { code: 'BASIC', amount: 50000 },
+        { code: 'HRA',   amount: 20000 },
+        { code: 'TDS',   amount: 7000 },
+        { code: 'PF',    amount: 6000 }
+      ]
+    })
+    expect(result).toMatchInlineSnapshot(`
+      { "grossPay": 70000, "totalDeductions": 13000, "netPay": 57000, "taxAmount": 7000 }
+    `)
+  })
+})</code></pre>
+    </div>
+
+    <div class="card">
+      <h4>Repository layer — mock Prisma client</h4>
+      <pre><code>import { mockDeep, DeepMockProxy } from 'vitest-mock-extended'
+import { PrismaClient } from '@prisma/client'
+
+describe('EmployeeRepository.findMany', () => {
+  let prisma: DeepMockProxy&lt;PrismaClient&gt;
+  let repo: EmployeeRepository
+
+  beforeEach(() => {
+    prisma = mockDeep&lt;PrismaClient&gt;()
+    repo = new EmployeeRepository(prisma)
+  })
+
+  it('always scopes query by companyId', async () => {
+    prisma.employee.findMany.mockResolvedValue([])
+    await repo.findMany('company-123', { page: 1, perPage: 25 })
+
+    expect(prisma.employee.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ companyId: 'company-123', deletedAt: null })
+      })
+    )
+  })
+
+  it('applies soft delete filter', async () => {
+    await repo.findMany('company-123', {})
+    const call = prisma.employee.findMany.mock.calls[0][0]
+    expect(call.where.deletedAt).toBeNull()
+  })
+})</code></pre>
+    </div>
+
+    <h3>Test data builders (Factory pattern)</h3>
+    <pre><code>// src/tests/builders/employee.builder.ts
+export const buildEmployee = (overrides: Partial&lt;Employee&gt; = {}): Employee => ({
+  id: faker.string.uuid(),
+  companyId: faker.string.uuid(),
+  employeeNumber: `EMP-${faker.number.int({ min: 1000, max: 9999 })}`,
+  firstName: faker.person.firstName(),
+  lastName: faker.person.lastName(),
+  email: faker.internet.email(),
+  status: 'active',
+  employmentType: 'full_time',
+  hireDate: faker.date.past(),
+  noticePeriodDays: 30,
+  workSchedule: 'weekdays',
+  weeklyHours: new Decimal(40),
+  customFields: {},
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  deletedAt: null,
+  ...overrides,
+})</code></pre>
+
+    <h3>Critical unit test cases per module</h3>
+    <div class="card">
+      <div class="test-row" style="font-weight:600;color:var(--text);border-bottom:0.5px solid var(--border2)">
+        <div>Test area</div><div>Cases to cover</div><div>Priority</div>
+      </div>
+      <div class="test-row">
+        <div class="test-name">Leave accrual engine</div>
+        <div class="test-desc">Annual vs monthly accrual math, carry-forward cap, lapse on year rollover, pro-rated accrual for mid-year hire</div>
+        <div><span class="test-badge badge-green">P0</span></div>
+      </div>
+      <div class="test-row">
+        <div class="test-name">Payroll computation</div>
+        <div class="test-desc">Gross = sum(earnings), Net = Gross - Deductions, LOP deduction from paid days, percentage component off base, formula components</div>
+        <div><span class="test-badge badge-green">P0</span></div>
+      </div>
+      <div class="test-row">
+        <div class="test-name">RBAC permission checks</div>
+        <div class="test-desc">Admin can do everything, Employee can only read self, Manager scoped to team, HR can read all, scope inheritance</div>
+        <div><span class="test-badge badge-green">P0</span></div>
+      </div>
+      <div class="test-row">
+        <div class="test-name">JWT auth middleware</div>
+        <div class="test-desc">Valid token passes, expired token rejected, wrong company_id rejected, missing token 401, MFA required flag</div>
+        <div><span class="test-badge badge-green">P0</span></div>
+      </div>
+      <div class="test-row">
+        <div class="test-name">Approval workflow state machine</div>
+        <div class="test-desc">All valid transitions succeed, invalid transitions throw, final states are terminal, events emitted on transition</div>
+        <div><span class="test-badge badge-green">P0</span></div>
+      </div>
+      <div class="test-row">
+        <div class="test-name">Tenant isolation</div>
+        <div class="test-desc">Every repository method called with companyId in WHERE, cross-tenant read returns null, cross-tenant write throws</div>
+        <div><span class="test-badge badge-green">P0</span></div>
+      </div>
+      <div class="test-row">
+        <div class="test-name">Webhook HMAC signing</div>
+        <div class="test-desc">Signature matches expected, payload mutation changes sig, wrong secret fails verify, PII excluded from payload</div>
+        <div><span class="badge badge-blue">P1</span></div>
+      </div>
+      <div class="test-row">
+        <div class="test-name">Password / token security</div>
+        <div class="test-desc">Argon2 hash not reversible, reset token single-use, refresh rotation revokes old token, MFA required after enable</div>
+        <div><span class="test-badge badge-green">P0</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="regression">
+    <h2>Regression & Test Automation Strategy</h2>
+
+    <h3>Test pyramid</h3>
+    <div class="diagram-wrap">
+      <div class="diagram-title">Test pyramid — type, tooling, and count targets</div>
+      <svg width="100%" viewBox="0 0 680 310" role="img">
+        <title>Test Pyramid</title>
+        <desc>Test pyramid showing unit tests at the base, integration tests in the middle, and end-to-end tests at the top, with count and tooling labels</desc>
+        <!-- E2E -->
+        <polygon points="340,30 260,120 420,120" fill="#faece7" stroke="#993c1d" stroke-width="0.5"/>
+        <text x="340" y="72" text-anchor="middle" font-size="12" font-weight="600" fill="#993c1d" font-family="system-ui">E2E / Smoke</text>
+        <text x="340" y="89" text-anchor="middle" font-size="10" fill="#993c1d" font-family="system-ui">Playwright · ~80 tests</text>
+        <text x="340" y="105" text-anchor="middle" font-size="10" fill="#993c1d" font-family="system-ui">Critical user journeys</text>
+        <!-- Integration -->
+        <polygon points="260,125 180,215 420,215 420,215" fill="#faeeda" stroke="#ba7517" stroke-width="0.5"/>
+        <text x="320" y="163" text-anchor="middle" font-size="12" font-weight="600" fill="#ba7517" font-family="system-ui">Integration / API</text>
+        <text x="320" y="180" text-anchor="middle" font-size="10" fill="#ba7517" font-family="system-ui">Supertest + TestContainers · ~400 tests</text>
+        <text x="320" y="197" text-anchor="middle" font-size="10" fill="#ba7517" font-family="system-ui">Real DB + Redis · multi-step flows</text>
+        <!-- Unit -->
+        <polygon points="180,220 100,300 560,300 480,220" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+        <text x="330" y="258" text-anchor="middle" font-size="12" font-weight="600" fill="#0f6e56" font-family="system-ui">Unit Tests</text>
+        <text x="330" y="275" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">Vitest · ~1500 tests · mocked deps · &lt; 60s total</text>
+        <text x="330" y="291" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">Service · Repository · Utils · Middleware · Workers</text>
+        <!-- Right labels -->
+        <text x="450" y="78" font-size="11" fill="#8a8a84" font-family="system-ui">Slowest · ~10 min</text>
+        <text x="450" y="175" font-size="11" fill="#8a8a84" font-family="system-ui">Medium · ~3 min</text>
+        <text x="590" y="265" font-size="11" fill="#8a8a84" font-family="system-ui">Fast · &lt;60s</text>
+      </svg>
+    </div>
+
+    <h3>Integration test strategy</h3>
+    <p>Integration tests run against a real PostgreSQL instance and Redis, spun up via <strong>TestContainers</strong> in CI. Each test file gets a fresh database schema migration and seed. Tests call the service layer directly (no HTTP) and assert on real DB state after the operation.</p>
+
+    <div class="card">
+      <h4>Integration test example — payroll cycle end-to-end</h4>
+      <pre><code>describe('Payroll integration: full cycle run', () => {
+  let db: PostgreSqlContainer
+  let redis: RedisContainer
+  let prisma: PrismaClient
+
+  beforeAll(async () => {
+    db = await new PostgreSqlContainer().start()
+    redis = await new RedisContainer().start()
+    prisma = new PrismaClient({ datasourceUrl: db.getConnectionUri() })
+    await prisma.$executeRaw`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`
+    await runMigrations(prisma)
+    await seedTestCompany(prisma)
+  })
+
+  afterAll(async () => {
+    await prisma.$disconnect()
+    await db.stop()
+    await redis.stop()
+  })
+
+  it('computes correct net pay for employee with LOP', async () => {
+    const emp = await createEmployee(prisma, companyId, { salary: 60000 })
+    await createAttendanceLogs(prisma, emp.id, { lopDays: 2, workingDays: 22 })
+    
+    const cycle = await payrollService.createCycle(ctx, cycleInput)
+    await payrollService.runCycle(ctx, cycle.id)
+    
+    const entry = await prisma.payrollEntry.findFirst({ where: { employeeId: emp.id }})
+    
+    expect(entry!.lopDays.toNumber()).toBe(2)
+    expect(entry!.netPay.toNumber()).toBeCloseTo(57272.72, 1) // 60000/22*20
+    expect(entry!.status).toBe('computed')
+  })
+})</code></pre>
+    </div>
+
+    <h3>End-to-end test scenarios (Playwright)</h3>
+    <table>
+      <thead><tr><th>Journey</th><th>Steps covered</th><th>Runs on</th></tr></thead>
+      <tbody>
+        <tr><td><strong>New company onboarding</strong></td><td>Register → verify email → create first employee → assign salary → run payroll</td><td>Staging · Every deploy</td></tr>
+        <tr><td><strong>Leave request flow</strong></td><td>Employee applies → manager notified → approves → balance deducted → ESS shows updated balance</td><td>Staging · Every deploy</td></tr>
+        <tr><td><strong>Payroll cycle</strong></td><td>HR creates cycle → runs compute → reviews entries → approves → downloads bank file → payslips emailed</td><td>Staging · Nightly</td></tr>
+        <tr><td><strong>Employee lifecycle</strong></td><td>Create → hire → probation confirm → transfer → promote → terminate → verify history log</td><td>Staging · Nightly</td></tr>
+        <tr><td><strong>Candidate to hire (V2)</strong></td><td>Post job → candidate applies → schedule interview → submit feedback → create offer → accept → trigger onboarding</td><td>Staging · Nightly</td></tr>
+        <tr><td><strong>Performance review (V2)</strong></td><td>Create cycle → employee self-review → manager review → calibration → employee acknowledge</td><td>Staging · Weekly</td></tr>
+        <tr><td><strong>SSO login</strong></td><td>SAML redirect → IdP auth → callback → JWT issued → redirected to dashboard</td><td>Staging · Every deploy</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Regression test automation rules</h3>
+    <div class="card-grid" style="grid-template-columns: repeat(auto-fit,minmax(250px,1fr))">
+      <div class="card">
+        <h4>Rule 1 — Bug-driven test creation</h4>
+        <p>Every bug fix must be accompanied by a failing test that reproduces the bug, then passes after the fix. This test lives permanently in the regression suite and is tagged with the issue ID.</p>
+        <pre><code>// regression/issue-247.test.ts
+// Bug: Leave balance went negative when
+// applying for more days than balance
+it('GH-247: balance cannot go below zero', ...)</code></pre>
+      </div>
+      <div class="card">
+        <h4>Rule 2 — Contract testing</h4>
+        <p>API contracts are verified with Pact. Consumer-driven contract tests ensure frontend and integration partners can rely on response shapes not changing unexpectedly between deploys.</p>
+        <pre><code>// pact/leave-consumer.pact.ts
+consumer.addInteraction({
+  state: 'employee has pending leave',
+  uponReceiving: 'GET /leave/requests',
+  withRequest: { method: 'GET', path: '/leave/requests' },
+  willRespondWith: {
+    status: 200,
+    body: like({ data: eachLike(leaveRequestShape) })
+  }
+})</code></pre>
+      </div>
+      <div class="card">
+        <h4>Rule 3 — Performance regression</h4>
+        <p>Key API endpoints have p95 latency budgets enforced in CI. k6 load tests run nightly on staging against a production-like dataset (100k employees synthetic). Any endpoint exceeding its budget blocks the release.</p>
+        <table style="margin:8px 0;font-size:12px">
+          <tr><th>Endpoint</th><th>Budget</th></tr>
+          <tr><td>GET /employees</td><td>&lt; 120ms</td></tr>
+          <tr><td>GET /leave/balances</td><td>&lt; 80ms</td></tr>
+          <tr><td>POST /payroll/cycles/:id/run</td><td>&lt; 30s</td></tr>
+          <tr><td>GET /org-chart</td><td>&lt; 200ms</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h4>Rule 4 — Mutation testing</h4>
+        <p>Stryker mutation testing runs weekly on the service layer. A mutation score below 75% flags test gaps. High-priority mutants (payroll computation, permission checks) must achieve 90%+ mutation score.</p>
+        <pre><code>// stryker.config.ts
+{
+  mutate: ['src/services/**/*.ts'],
+  reporters: ['html', 'github-actions'],
+  thresholds: {
+    high: 90, low: 75, break: 65
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <h3>Regression prevention checklist (PR gate)</h3>
+    <table>
+      <thead><tr><th>Check</th><th>Tool</th><th>Threshold</th><th>Blocks merge?</th></tr></thead>
+      <tbody>
+        <tr><td>Unit test pass</td><td>Vitest</td><td>100% pass</td><td>Yes</td></tr>
+        <tr><td>Unit test coverage — services</td><td>Istanbul</td><td>≥ 90%</td><td>Yes</td></tr>
+        <tr><td>Integration test pass</td><td>Vitest + TestContainers</td><td>100% pass</td><td>Yes</td></tr>
+        <tr><td>TypeScript type check</td><td>tsc --noEmit</td><td>0 errors</td><td>Yes</td></tr>
+        <tr><td>Linting</td><td>ESLint (Airbnb + custom)</td><td>0 errors</td><td>Yes</td></tr>
+        <tr><td>Dependency audit</td><td>npm audit + Snyk</td><td>0 critical</td><td>Yes</td></tr>
+        <tr><td>Secret scan</td><td>Trufflehog</td><td>0 secrets</td><td>Yes</td></tr>
+        <tr><td>API contract tests</td><td>Pact</td><td>100% pass</td><td>Yes</td></tr>
+        <tr><td>E2E smoke tests</td><td>Playwright (staging)</td><td>100% pass</td><td>Yes (on deploy)</td></tr>
+        <tr><td>Mutation score</td><td>Stryker</td><td>≥ 65%</td><td>Weekly, advisory</td></tr>
+        <tr><td>Performance budgets</td><td>k6</td><td>p95 within budget</td><td>Nightly, blocks release</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="ci-cd">
+    <h2>CI/CD Pipeline</h2>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">GitHub Actions pipeline — PR through production deploy</div>
+      <svg width="100%" viewBox="0 0 880 230" role="img">
+        <title>CI/CD Pipeline Flow</title>
+        <desc>CI/CD pipeline showing stages from code push through lint, unit tests, build, integration tests, staging deploy, E2E tests, and production deploy</desc>
+        <defs>
+          <marker id="arr4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </marker>
+        </defs>
+        <!-- Stage boxes -->
+        <g>
+          <rect x="20" y="80" width="90" height="52" rx="8" fill="#e8eefb" stroke="#2a5bd7" stroke-width="0.5"/>
+          <text x="65" y="101" text-anchor="middle" font-size="11" font-weight="600" fill="#2a5bd7" font-family="system-ui">Push / PR</text>
+          <text x="65" y="117" text-anchor="middle" font-size="10" fill="#4a6ab7" font-family="system-ui">Trigger</text>
+          <text x="65" y="129" text-anchor="middle" font-size="10" fill="#4a6ab7" font-family="system-ui">GitHub Actions</text>
+        </g>
+        <line x1="110" y1="106" x2="128" y2="106" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr4)"/>
+        <g>
+          <rect x="128" y="80" width="90" height="52" rx="8" fill="#fdf3e0" stroke="#7a4a00" stroke-width="0.5"/>
+          <text x="173" y="101" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4a00" font-family="system-ui">Quality</text>
+          <text x="173" y="117" text-anchor="middle" font-size="10" fill="#7a4a00" font-family="system-ui">Lint · Type</text>
+          <text x="173" y="129" text-anchor="middle" font-size="10" fill="#7a4a00" font-family="system-ui">Audit · Secrets</text>
+        </g>
+        <line x1="218" y1="106" x2="236" y2="106" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr4)"/>
+        <g>
+          <rect x="236" y="80" width="90" height="52" rx="8" fill="#fdf3e0" stroke="#7a4a00" stroke-width="0.5"/>
+          <text x="281" y="101" text-anchor="middle" font-size="11" font-weight="600" fill="#7a4a00" font-family="system-ui">Unit Tests</text>
+          <text x="281" y="117" text-anchor="middle" font-size="10" fill="#7a4a00" font-family="system-ui">Vitest · ~1500</text>
+          <text x="281" y="129" text-anchor="middle" font-size="10" fill="#7a4a00" font-family="system-ui">Coverage check</text>
+        </g>
+        <line x1="326" y1="106" x2="344" y2="106" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr4)"/>
+        <g>
+          <rect x="344" y="80" width="100" height="52" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="394" y="101" text-anchor="middle" font-size="11" font-weight="600" fill="#0f6e56" font-family="system-ui">Integration</text>
+          <text x="394" y="117" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">TestContainers</text>
+          <text x="394" y="129" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">Real DB · ~400</text>
+        </g>
+        <line x1="444" y1="106" x2="462" y2="106" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr4)"/>
+        <g>
+          <rect x="462" y="80" width="90" height="52" rx="8" fill="#e1f5ee" stroke="#0f6e56" stroke-width="0.5"/>
+          <text x="507" y="101" text-anchor="middle" font-size="11" font-weight="600" fill="#0f6e56" font-family="system-ui">Build</text>
+          <text x="507" y="117" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">Docker image</text>
+          <text x="507" y="129" text-anchor="middle" font-size="10" fill="#0f6e56" font-family="system-ui">Push to ECR</text>
+        </g>
+        <line x1="552" y1="106" x2="570" y2="106" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr4)"/>
+        <g>
+          <rect x="570" y="80" width="100" height="52" rx="8" fill="#faeeda" stroke="#ba7517" stroke-width="0.5"/>
+          <text x="620" y="101" text-anchor="middle" font-size="11" font-weight="600" fill="#ba7517" font-family="system-ui">Staging Deploy</text>
+          <text x="620" y="117" text-anchor="middle" font-size="10" fill="#ba7517" font-family="system-ui">Helm upgrade</text>
+          <text x="620" y="129" text-anchor="middle" font-size="10" fill="#ba7517" font-family="system-ui">DB migration</text>
+        </g>
+        <line x1="670" y1="106" x2="688" y2="106" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr4)"/>
+        <g>
+          <rect x="688" y="80" width="90" height="52" rx="8" fill="#faece7" stroke="#993c1d" stroke-width="0.5"/>
+          <text x="733" y="101" text-anchor="middle" font-size="11" font-weight="600" fill="#993c1d" font-family="system-ui">E2E Tests</text>
+          <text x="733" y="117" text-anchor="middle" font-size="10" fill="#993c1d" font-family="system-ui">Playwright · ~80</text>
+          <text x="733" y="129" text-anchor="middle" font-size="10" fill="#993c1d" font-family="system-ui">Smoke journeys</text>
+        </g>
+        <line x1="778" y1="106" x2="796" y2="106" stroke="#8a8a84" stroke-width="0.8" marker-end="url(#arr4)"/>
+        <g>
+          <rect x="796" y="80" width="64" height="52" rx="8" fill="#eeebfb" stroke="#4a2ab0" stroke-width="0.5"/>
+          <text x="828" y="101" text-anchor="middle" font-size="11" font-weight="600" fill="#4a2ab0" font-family="system-ui">Prod</text>
+          <text x="828" y="117" text-anchor="middle" font-size="10" fill="#4a2ab0" font-family="system-ui">Helm rolling</text>
+          <text x="828" y="129" text-anchor="middle" font-size="10" fill="#4a2ab0" font-family="system-ui">update</text>
+        </g>
+
+        <!-- Timing labels -->
+        <text x="65" y="155" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">—</text>
+        <text x="173" y="155" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">~1 min</text>
+        <text x="281" y="155" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">~1 min</text>
+        <text x="394" y="155" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">~3 min</text>
+        <text x="507" y="155" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">~2 min</text>
+        <text x="620" y="155" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">~2 min</text>
+        <text x="733" y="155" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">~10 min</text>
+        <text x="828" y="155" text-anchor="middle" font-size="10" fill="#8a8a84" font-family="system-ui">~3 min</text>
+
+        <!-- Total time bar -->
+        <text x="440" y="190" text-anchor="middle" font-size="11" fill="#8a8a84" font-family="system-ui">Total pipeline: ~22 min PR to production</text>
+        <rect x="128" y="200" width="732" height="4" rx="2" fill="var(--bg3)"/>
+        <rect x="128" y="200" width="732" height="4" rx="2" fill="url(#prog)"/>
+        <defs>
+          <linearGradient id="prog" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#2a5bd7" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#993c1d" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+
+    <h3>Database migration strategy</h3>
+    <div class="callout callout-warn">
+      <p><strong>Zero-downtime migrations:</strong> All schema changes must be backward-compatible for at least one deploy cycle. Additive changes (new columns with defaults, new tables) deploy first. Destructive changes (column removal) are deferred to a cleanup migration in the following release.</p>
+    </div>
+    <div class="flow">
+      <div class="flow-box">New nullable column added</div><div class="flow-arrow">→</div>
+      <div class="flow-box">Deploy v1.1 (uses new column)</div><div class="flow-arrow">→</div>
+      <div class="flow-box">Backfill existing rows</div><div class="flow-arrow">→</div>
+      <div class="flow-box">Add NOT NULL constraint (v1.2)</div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section id="observability">
+    <h2>Observability</h2>
+
+    <h3>Structured logging</h3>
+    <p>All services use <code>pino</code> for structured JSON logging. Every log entry carries: <code>traceId</code>, <code>spanId</code>, <code>companyId</code>, <code>userId</code>, <code>requestId</code>, <code>service</code>, <code>level</code>, <code>msg</code>. PII fields are never logged — IDs only.</p>
+
+    <h3>Key metrics</h3>
+    <table>
+      <thead><tr><th>Metric</th><th>Type</th><th>Alert threshold</th></tr></thead>
+      <tbody>
+        <tr><td>API request rate</td><td>Counter</td><td>—</td></tr>
+        <tr><td>API p95 latency</td><td>Histogram</td><td>&gt; 500ms for 5 min</td></tr>
+        <tr><td>API error rate</td><td>Counter</td><td>&gt; 1% for 5 min</td></tr>
+        <tr><td>Payroll job duration</td><td>Histogram</td><td>&gt; 60s</td></tr>
+        <tr><td>Queue depth (payroll)</td><td>Gauge</td><td>&gt; 5 waiting jobs</td></tr>
+        <tr><td>DB connection pool exhaustion</td><td>Gauge</td><td>&gt; 80% used</td></tr>
+        <tr><td>Redis memory usage</td><td>Gauge</td><td>&gt; 75% of max</td></tr>
+        <tr><td>Failed webhook deliveries</td><td>Counter</td><td>&gt; 10/min</td></tr>
+      </tbody>
+    </table>
+
+    <h3>SLOs (Service Level Objectives)</h3>
+    <div class="card-grid">
+      <div class="stat-card"><div class="stat-label">API availability</div><div class="stat-value">99.9%</div><div class="stat-sub">≤ 8.7 h downtime/year</div></div>
+      <div class="stat-card"><div class="stat-label">API p95 latency</div><div class="stat-value">&lt; 300ms</div><div class="stat-sub">Excluding payroll compute</div></div>
+      <div class="stat-card"><div class="stat-label">Payroll run</div><div class="stat-value">&lt; 30s</div><div class="stat-sub">For 500 employees</div></div>
+      <div class="stat-card"><div class="stat-label">Webhook delivery</div><div class="stat-value">&lt; 30s</div><div class="stat-sub">p95 from event to delivery</div></div>
+    </div>
+
+    <hr>
+    <p style="font-size:13px;color:var(--text3);text-align:center">HR Management System — System Design Document v1.0 · Generated for V1 MVP + V2 release planning</p>
+  </section>
+
+</div>
+
+<script>
+const sections = document.querySelectorAll('section[id]')
+const links = document.querySelectorAll('.toc a')
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'))
+      const active = document.querySelector(`.toc a[href="#${e.target.id}"]`)
+      if (active) {
+        active.classList.add('active')
+        active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      }
+    }
+  })
+}, { threshold: 0.2, rootMargin: '-52px 0px -60% 0px' })
+sections.forEach(s => obs.observe(s))
+</script>
+</body>
+</html>

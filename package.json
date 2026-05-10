@@ -1,0 +1,43 @@
+{
+  "name": "hr-management-backend",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "apps/*",
+    "libs/*"
+  ],
+  "scripts": {
+    "lint": "eslint . --ext .ts",
+    "type-check": "tsc --noEmit -p tsconfig.base.json",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:utils": "vitest run --config vitest.utils.config.ts --coverage --passWithNoTests",
+    "build": "pnpm -r run build",
+    "dev": "docker compose up -d && pnpm -r --parallel run dev",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "@types/node": "^22.15.21",
+    "@types/supertest": "^6.0.3",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-airbnb-typescript": "^18.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.31.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.3",
+    "vite-tsconfig-paths": "^4.3.2",
+    "vitest": "^2.1.9"
+  }
+}

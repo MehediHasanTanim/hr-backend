@@ -1,0 +1,13 @@
+detectors:
+  - name: AWS
+  - name: GitHub
+  - name: Slack
+  - name: Stripe
+  - name: Anthropic
+exclude_paths:
+  - .git/
+  - node_modules/
+  - dist/
+  - coverage/
+  - '**/*.example'
+  - '**/*.test.ts'
