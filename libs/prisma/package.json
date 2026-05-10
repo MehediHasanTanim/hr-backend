@@ -4,9 +4,22 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:reset": "prisma migrate reset",
+    "migrate:deploy": "prisma migrate deploy",
+    "studio": "prisma studio",
+    "generate": "prisma generate",
+    "seed": "ts-node src/seeds/seed.ts"
   },
   "dependencies": {
+    "@hr/api": "workspace:*",
+    "@nestjs/common": "^11.1.6",
     "@prisma/client": "^5.22.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "vitest": "^2.1.9"
   }
 }

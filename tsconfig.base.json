@@ -18,6 +18,9 @@
     "rootDir": "src",
     "baseUrl": ".",
     "paths": {
+      "@hr/api/config": [
+        "apps/api/src/config/index.ts"
+      ],
       "@hr/shared": ["libs/shared/src/index.ts"],
       "@hr/shared/*": ["libs/shared/src/*"],
       "@hr/prisma": ["libs/prisma/src/index.ts"],

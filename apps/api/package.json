@@ -12,6 +12,7 @@
   "dependencies": {
     "@fastify/swagger": "^9.5.2",
     "@fastify/swagger-ui": "^5.2.3",
+    "@hr/prisma": "workspace:*",
     "@hr/shared": "workspace:*",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
