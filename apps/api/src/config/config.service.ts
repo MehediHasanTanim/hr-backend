@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { readFileSync } from 'node:fs';
 import type { AppConfig } from './config.interface';
 
 @Injectable()
 export class AppConfigService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {}
 
   get<K extends keyof AppConfig>(key: K): AppConfig[K] {
     const app = {
@@ -12,7 +13,8 @@ export class AppConfigService {
       port: this.config.get<number>('PORT', 3000),
       host: this.config.get<string>('HOST', '0.0.0.0'),
       apiBaseUrl: this.config.get<string>('API_BASE_URL'),
-      corsOrigin: this.config.get<string>('CORS_ORIGIN')?.split(','),
+      webBaseUrl: this.config.get<string>('WEB_BASE_URL'),
+      corsOrigin: this.config.get<string>('CORS_ORIGIN')?.split(',').map((origin) => origin.trim()),
       swaggerEnabled: this.config.get<boolean>('SWAGGER_ENABLED', false),
     } satisfies AppConfig['app'];
 
@@ -34,10 +36,26 @@ export class AppConfigService {
         useSsl: this.config.get<boolean>('MINIO_USE_SSL', false),
         bucketName: this.config.get<string>('MINIO_BUCKET_NAME', 'hr-uploads'),
       },
-      auth: {
-        jwtSecret: this.config.getOrThrow<string>('JWT_SECRET'),
-        jwtExpiresIn: this.config.get<string>('JWT_EXPIRES_IN', '1h'),
-        refreshTokenExpiresIn: this.config.get<string>('REFRESH_TOKEN_EXPIRES_IN', '7d'),
+      jwt: {
+        privateKey: readFileSync(this.config.getOrThrow<string>('JWT_PRIVATE_KEY_PATH'), 'utf8'),
+        publicKey: readFileSync(this.config.getOrThrow<string>('JWT_PUBLIC_KEY_PATH'), 'utf8'),
+      },
+      cookie: {
+        secret: this.config.getOrThrow<string>('COOKIE_SECRET'),
+      },
+      mail: {
+        host: this.config.getOrThrow<string>('MAIL_HOST'),
+        port: this.config.get<number>('MAIL_PORT', 587),
+        from: this.config.getOrThrow<string>('MAIL_FROM'),
+        user: this.config.get<string>('MAIL_USER'),
+        pass: this.config.get<string>('MAIL_PASS'),
+      },
+      sso: {
+        enabled: this.config.get<boolean>('SSO_ENABLED', false),
+        google: {
+          clientId: this.config.get<string>('GOOGLE_CLIENT_ID'),
+          clientSecret: this.config.get<string>('GOOGLE_CLIENT_SECRET'),
+        },
       },
       log: {
         level: this.config.get<string>('LOG_LEVEL', 'info'),

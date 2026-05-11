@@ -4,6 +4,7 @@ export interface AppConfig {
     port: number;
     host: string;
     apiBaseUrl: string | undefined;
+    webBaseUrl: string | undefined;
     corsOrigin: string[] | undefined;
     swaggerEnabled: boolean;
   };
@@ -21,10 +22,26 @@ export interface AppConfig {
     useSsl: boolean;
     bucketName: string;
   };
-  auth: {
-    jwtSecret: string;
-    jwtExpiresIn: string;
-    refreshTokenExpiresIn: string;
+  jwt: {
+    privateKey: string;
+    publicKey: string;
+  };
+  cookie: {
+    secret: string;
+  };
+  mail: {
+    host: string;
+    port: number;
+    from: string;
+    user: string | undefined;
+    pass: string | undefined;
+  };
+  sso: {
+    enabled: boolean;
+    google: {
+      clientId: string | undefined;
+      clientSecret: string | undefined;
+    };
   };
   log: { level: string };
   otel: {

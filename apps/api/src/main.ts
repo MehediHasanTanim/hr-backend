@@ -4,11 +4,13 @@ import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
+import fastifyCookie from '@fastify/cookie';
 import { AppModule } from './app.module';
 import { bootstrapSwagger } from './swagger/swagger.bootstrap';
 import { bootstrapPipes } from './pipes/pipes.bootstrap';
 import { bootstrapFilters } from './filters/filters.bootstrap';
 import { bootstrapInterceptors } from './interceptors/interceptors.bootstrap';
+import { AppConfigService } from './config/config.service';
 
 export async function bootstrap(): Promise<void> {
   const adapter = new FastifyAdapter({
@@ -23,9 +25,33 @@ export async function bootstrap(): Promise<void> {
     { bufferLogs: true },
   );
 
+  const config = app.get(AppConfigService);
+  await app.register(fastifyCookie, {
+    secret: config.get('cookie').secret,
+  });
+
+  const allowedOrigins = config.get('app').corsOrigin ?? [];
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') ?? '*',
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS: origin ${origin} not allowed`), false);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-trace-id',
+      'x-api-key',
+      'x-requested-with',
+    ],
+    exposedHeaders: ['x-trace-id', 'x-total-count'],
+    maxAge: 86_400,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
 
   app.setGlobalPrefix('api/v1', { exclude: ['/health'] });
@@ -35,8 +61,8 @@ export async function bootstrap(): Promise<void> {
   bootstrapInterceptors(app);
   await bootstrapSwagger(app);
 
-  const port = Number(process.env.PORT ?? 3000);
-  const host = process.env.HOST ?? '0.0.0.0';
+  const port = config.get('app').port;
+  const host = config.get('app').host;
 
   await app.listen(port, host);
 }

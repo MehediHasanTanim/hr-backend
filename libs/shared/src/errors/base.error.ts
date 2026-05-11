@@ -34,6 +34,12 @@ export class ValidationError extends AppError {
   readonly code = 'VALIDATION_ERROR';
 }
 
+export class BadRequestError extends AppError {
+  readonly statusCode = 400;
+
+  readonly code = 'BAD_REQUEST';
+}
+
 export class ConflictError extends AppError {
   readonly statusCode = 409;
 

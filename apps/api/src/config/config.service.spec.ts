@@ -13,7 +13,11 @@ describe('AppConfigService', () => {
       MINIO_ENDPOINT: 'localhost',
       MINIO_ACCESS_KEY: 'a',
       MINIO_SECRET_KEY: 's',
-      JWT_SECRET: '12345678901234567890123456789012',
+      JWT_PRIVATE_KEY_PATH: 'keys/private.pem',
+      JWT_PUBLIC_KEY_PATH: 'keys/public.pem',
+      COOKIE_SECRET: '12345678901234567890123456789012',
+      MAIL_HOST: 'localhost',
+      MAIL_FROM: 'test@example.com',
     });
 
     const service = new AppConfigService(config);

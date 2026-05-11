@@ -2,5 +2,6 @@ node_modules/
 dist/
 coverage/
 .env
+keys/private.pem
 pnpm-debug.log*
 .DS_Store

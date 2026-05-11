@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { AppConfigService } from '@hr/api/config';
 import { softDeleteExtension } from './extensions/soft-delete.extension';
@@ -8,9 +8,9 @@ import { withTenantScope } from './extensions/tenant-scope.extension';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor(config: AppConfigService) {
+  constructor(@Optional() @Inject(AppConfigService) config?: AppConfigService) {
     super({
-      datasourceUrl: config.get('db').url,
+      datasourceUrl: config?.get('db').url ?? process.env.DATABASE_URL,
       log: [
         { emit: 'event', level: 'query' },
         { emit: 'event', level: 'error' },
@@ -20,6 +20,14 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit(): Promise<void> {
+    if (
+      process.env.NODE_ENV === 'test'
+      || (process.env.VITEST_WORKER_ID ?? false)
+      || process.env.DATABASE_URL === 'postgresql://user:pass@localhost:5432/db'
+    ) {
+      return;
+    }
+
     await this.$connect();
     this.logger.log('Prisma connected');
 

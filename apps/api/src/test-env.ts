@@ -8,7 +8,11 @@ export function applyTestEnv(overrides: Record<string, string> = {}): void {
     MINIO_ENDPOINT: 'localhost',
     MINIO_ACCESS_KEY: 'access',
     MINIO_SECRET_KEY: 'secret',
-    JWT_SECRET: '12345678901234567890123456789012',
+    JWT_PRIVATE_KEY_PATH: 'keys/private.pem',
+    JWT_PUBLIC_KEY_PATH: 'keys/public.pem',
+    COOKIE_SECRET: '12345678901234567890123456789012',
+    MAIL_HOST: 'localhost',
+    MAIL_FROM: 'test@example.com',
     LOG_LEVEL: 'info',
   };
 
