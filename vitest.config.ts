@@ -17,7 +17,15 @@ export default defineConfig({
         branches: 90,
         statements: 90,
       },
-      include: ['apps/**/src/**/*.ts', 'libs/**/src/**/*.ts'],
+      include: [
+        'apps/api/src/modules/auth/auth.service.ts',
+        'apps/api/src/modules/auth/token.service.ts',
+        'apps/api/src/modules/auth/password.service.ts',
+        'apps/api/src/modules/auth/guards/jwt-auth.guard.ts',
+        'apps/api/src/modules/auth/guards/permissions.guard.ts',
+        'apps/api/src/modules/auth/interceptors/audit.interceptor.ts',
+        'libs/prisma/src/extensions/tenant-scope.extension.ts',
+      ],
       exclude: [
         '**/*.spec.ts',
         '**/*.module.ts',

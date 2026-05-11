@@ -93,7 +93,7 @@ export function applyTenantScopeOperation(input: ScopeOperationInput): unknown {
 }
 
 export function withTenantScope(companyId: string): ReturnType<typeof Prisma.defineExtension> {
-  return Prisma.defineExtension({
+  const extensionConfig = {
     name: 'tenant-scope',
     query: {
       $allModels: {
@@ -108,5 +108,11 @@ export function withTenantScope(companyId: string): ReturnType<typeof Prisma.def
         },
       },
     },
+  };
+  const extension = Prisma.defineExtension(extensionConfig);
+  Object.defineProperty(extension, 'query', {
+    value: extensionConfig.query,
+    enumerable: true,
   });
+  return extension;
 }

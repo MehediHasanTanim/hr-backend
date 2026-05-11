@@ -1,157 +1,306 @@
-import { describe, expect, it, vi } from 'vitest';
-import { applyTenantScopeOperation } from '../tenant-scope.extension';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { withTenantScope } from '../tenant-scope.extension';
 
-describe('TENANT SCOPE EXTENSION', () => {
-  describe('READ operations', () => {
-    it('findMany — injects companyId and deletedAt:null into where clause', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'findMany', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a', deletedAt: null }) }));
+type QueryArgs = Record<string, unknown>;
+type QueryMock = ReturnType<typeof buildQueryMock>;
+type AllOperationsHandler = (params: {
+  model: string;
+  operation: string;
+  args: QueryArgs;
+  query: QueryMock;
+}) => Promise<unknown>;
+
+function buildQueryMock<T = unknown>(returnValue: T = {} as T) {
+  return vi.fn().mockResolvedValue(returnValue);
+}
+
+function getHandler(companyId: string): AllOperationsHandler {
+  const extension = withTenantScope(companyId);
+  return (extension as unknown as {
+    query: { $allModels: { $allOperations: AllOperationsHandler } };
+  }).query.$allModels.$allOperations;
+}
+
+const COMPANY_A = 'company-a-uuid';
+const COMPANY_B = 'company-b-uuid';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+describe('withTenantScope() Prisma extension', () => {
+  describe('READ operations on tenant-scoped models', () => {
+    for (const operation of ['findMany', 'findFirst', 'findFirstOrThrow', 'count', 'aggregate', 'groupBy']) {
+      it(`injects companyId and deletedAt:null into where clause for ${operation}`, async () => {
+        const query = buildQueryMock([]);
+
+        await getHandler(COMPANY_A)({ model: 'Employee', operation, args: {}, query });
+
+        expect(query).toHaveBeenCalledWith(expect.objectContaining({
+          where: expect.objectContaining({ companyId: COMPANY_A, deletedAt: null }),
+        }));
+      });
+    }
+
+    it('preserves existing where conditions alongside injected tenant filters', async () => {
+      const query = buildQueryMock([]);
+
+      await getHandler(COMPANY_A)({
+        model: 'Employee',
+        operation: 'findMany',
+        args: { where: { status: 'ACTIVE', departmentId: 'dept-001' } },
+        query,
+      });
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'ACTIVE',
+          departmentId: 'dept-001',
+          companyId: COMPANY_A,
+          deletedAt: null,
+        }),
+      }));
     });
 
-    it('findMany — preserves existing where conditions alongside injected filters', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'findMany', args: { where: { status: 'ACTIVE' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: 'ACTIVE', companyId: 'company-a', deletedAt: null }) }));
+    it('overwrites an attacker-supplied companyId in where with the scoped companyId', async () => {
+      const query = buildQueryMock([]);
+
+      await getHandler(COMPANY_A)({
+        model: 'Employee',
+        operation: 'findMany',
+        args: { where: { companyId: COMPANY_B } },
+        query,
+      });
+
+      const calledArgs = query.mock.calls[0]?.[0] as { where: { companyId: string } };
+      expect(calledArgs.where.companyId).toBe(COMPANY_A);
     });
 
-    it('findFirst — injects companyId and deletedAt:null', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'findFirst', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a', deletedAt: null }) }));
-    });
+    it('handles findUnique and findUniqueOrThrow with companyId injection', async () => {
+      for (const operation of ['findUnique', 'findUniqueOrThrow']) {
+        const query = buildQueryMock(null);
 
-    it('findFirstOrThrow — injects companyId and deletedAt:null', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'findFirstOrThrow', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a', deletedAt: null }) }));
-    });
+        await getHandler(COMPANY_A)({
+          model: 'Employee',
+          operation,
+          args: { where: { id: 'emp-001' } },
+          query,
+        });
 
-    it('findUnique — injects companyId and deletedAt:null', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'findUnique', args: { where: { id: 'x' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 'x', companyId: 'company-a', deletedAt: null }) }));
-    });
-
-    it('count — injects companyId and deletedAt:null', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'count', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a', deletedAt: null }) }));
-    });
-
-    it('aggregate — injects companyId and deletedAt:null', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'aggregate', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a', deletedAt: null }) }));
-    });
-
-    it('groupBy — injects companyId and deletedAt:null', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'groupBy', args: { by: ['status'] }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a', deletedAt: null }) }));
-    });
-  });
-
-  describe('WRITE operations', () => {
-    it('update — injects companyId into where (prevents cross-tenant update)', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'update', args: { where: { id: 'x' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 'x', companyId: 'company-a' }) }));
-    });
-
-    it('updateMany — injects companyId into where', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'updateMany', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a' }) }));
-    });
-
-    it('delete — injects companyId into where (soft-delete picks this up later)', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'delete', args: { where: { id: 'x' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 'x', companyId: 'company-a' }) }));
-    });
-
-    it('deleteMany — injects companyId into where', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'deleteMany', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a' }) }));
-    });
-  });
-
-  describe('CREATE operations', () => {
-    it('create — injects companyId into data', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'create', args: { data: { workEmail: 'a@x.com' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ companyId: 'company-a' }) }));
-    });
-
-    it('createMany (array) — injects companyId into every item in data array', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'createMany', args: { data: [{ workEmail: 'a@x.com' }, { workEmail: 'b@x.com' }] }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ data: [{ workEmail: 'a@x.com', companyId: 'company-a' }, { workEmail: 'b@x.com', companyId: 'company-a' }] }));
-    });
-
-    it('upsert — injects companyId into data', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'upsert', args: { where: { id: '1' }, create: {}, update: {}, data: { workEmail: 'a@x.com' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ companyId: 'company-a' }) }));
+        expect(query).toHaveBeenCalledWith(expect.objectContaining({
+          where: expect.objectContaining({ id: 'emp-001', companyId: COMPANY_A, deletedAt: null }),
+        }));
+      }
     });
   });
 
-  describe('UNSCOPED models (User, UserSession, RefreshToken, Permission)', () => {
-    it('findMany on User — does NOT inject companyId', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'User', operation: 'findMany', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.not.objectContaining({ where: expect.objectContaining({ companyId: 'company-a' }) }));
+  describe('WRITE operations on tenant-scoped models', () => {
+    it('injects companyId into where for update to prevent cross-tenant writes', async () => {
+      const query = buildQueryMock({ id: 'emp-001' });
+
+      await getHandler(COMPANY_A)({
+        model: 'Employee',
+        operation: 'update',
+        args: { where: { id: 'emp-001' }, data: { status: 'INACTIVE' } },
+        query,
+      });
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ id: 'emp-001', companyId: COMPANY_A }),
+      }));
     });
 
-    it('findMany on User — DOES inject deletedAt:null (soft-delete applies)', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'User', operation: 'findMany', args: {}, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ deletedAt: null }) }));
+    it('injects companyId into where for updateMany', async () => {
+      const query = buildQueryMock({ count: 5 });
+
+      await getHandler(COMPANY_A)({
+        model: 'Employee',
+        operation: 'updateMany',
+        args: { where: { departmentId: 'dept-001' }, data: { status: 'INACTIVE' } },
+        query,
+      });
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ departmentId: 'dept-001', companyId: COMPANY_A }),
+      }));
     });
 
-    it('findMany on Permission — passes args through completely unchanged', async () => {
-      const query = vi.fn();
-      const args = { where: { action: 'read' } };
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Permission', operation: 'findMany', args, query });
-      expect(query).toHaveBeenCalledWith(args);
+    it('injects companyId into where for delete', async () => {
+      const query = buildQueryMock({ id: 'emp-001' });
+
+      await getHandler(COMPANY_A)({
+        model: 'Employee',
+        operation: 'delete',
+        args: { where: { id: 'emp-001' } },
+        query,
+      });
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ id: 'emp-001', companyId: COMPANY_A }),
+      }));
     });
 
-    it('create on User — does NOT inject companyId into data', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'User', operation: 'create', args: { data: { email: 'x@y.com' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ data: expect.not.objectContaining({ companyId: 'company-a' }) }));
-    });
+    it('injects companyId into where for deleteMany', async () => {
+      const query = buildQueryMock({ count: 3 });
 
-    it('update on RefreshToken — does NOT inject companyId into where', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'RefreshToken', operation: 'update', args: { where: { id: '1' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: { id: '1' } }));
+      await getHandler(COMPANY_A)({
+        model: 'LeaveRequest',
+        operation: 'deleteMany',
+        args: { where: { status: 'REJECTED' } },
+        query,
+      });
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ status: 'REJECTED', companyId: COMPANY_A }),
+      }));
     });
   });
 
-  describe('CROSS-TENANT safety', () => {
-    it('Two separate scoped clients with different companyIds produce independent where clauses', async () => {
-      const queryA = vi.fn();
-      const queryB = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'findMany', args: {}, query: queryA });
-      await applyTenantScopeOperation({ companyId: 'company-b', model: 'Employee', operation: 'findMany', args: {}, query: queryB });
+  describe('CREATE operations on tenant-scoped models', () => {
+    it('injects companyId into data for create', async () => {
+      const query = buildQueryMock({ id: 'new-emp-001' });
 
-      expect(queryA).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a', deletedAt: null }) }));
-      expect(queryB).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-b', deletedAt: null }) }));
+      await getHandler(COMPANY_A)({
+        model: 'Employee',
+        operation: 'create',
+        args: { data: { firstName: 'Alice', workEmail: 'alice@test.com' } },
+        query,
+      });
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ companyId: COMPANY_A }),
+      }));
     });
 
-    it('companyId from scope cannot be overridden by passing companyId in args.where', async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'findMany', args: { where: { companyId: 'other-company' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a', deletedAt: null }) }));
+    it('injects companyId into every item in createMany data array', async () => {
+      const query = buildQueryMock({ count: 2 });
+
+      await getHandler(COMPANY_A)({
+        model: 'LeaveType',
+        operation: 'createMany',
+        args: { data: [{ name: 'Annual Leave' }, { name: 'Sick Leave' }] },
+        query,
+      });
+
+      const calledArgs = query.mock.calls[0]?.[0] as { data: Array<{ companyId: string }> };
+      expect(calledArgs.data.map((item) => item.companyId)).toEqual([COMPANY_A, COMPANY_A]);
     });
 
-    it("A query with where: { companyId: 'other-company' } is overwritten with scoped companyId", async () => {
-      const query = vi.fn();
-      await applyTenantScopeOperation({ companyId: 'company-a', model: 'Employee', operation: 'updateMany', args: { where: { companyId: 'other-company' } }, query });
-      expect(query).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ companyId: 'company-a' }) }));
+    it('injects companyId into nested createMany data array shape', async () => {
+      const query = buildQueryMock({ count: 2 });
+
+      await getHandler(COMPANY_A)({
+        model: 'LeaveType',
+        operation: 'createMany',
+        args: { data: { data: [{ name: 'Annual Leave' }, { name: 'Sick Leave' }] } },
+        query,
+      });
+
+      const calledArgs = query.mock.calls[0]?.[0] as { data: { data: Array<{ companyId: string }> } };
+      expect(calledArgs.data.data.map((item) => item.companyId)).toEqual([COMPANY_A, COMPANY_A]);
+    });
+
+    it('injects companyId into upsert data', async () => {
+      const query = buildQueryMock({ id: 'lt-001' });
+
+      await getHandler(COMPANY_A)({
+        model: 'LeaveType',
+        operation: 'upsert',
+        args: { where: { id: 'lt-001' }, data: { name: 'Annual Leave' } },
+        query,
+      });
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ companyId: COMPANY_A }),
+      }));
+    });
+  });
+
+  describe('UNSCOPED models', () => {
+    it('does not inject companyId for findMany on User', async () => {
+      const query = buildQueryMock([]);
+
+      await getHandler(COMPANY_A)({ model: 'User', operation: 'findMany', args: {}, query });
+
+      const calledArgs = query.mock.calls[0]?.[0] as { where?: Record<string, unknown> };
+      expect(calledArgs.where?.companyId).toBeUndefined();
+    });
+
+    it('still injects deletedAt:null for User because soft-delete applies', async () => {
+      const query = buildQueryMock([]);
+
+      await getHandler(COMPANY_A)({ model: 'User', operation: 'findMany', args: {}, query });
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ deletedAt: null }),
+      }));
+    });
+
+    it('passes Permission queries through completely unchanged', async () => {
+      const originalArgs = { where: { resource: 'employee' }, orderBy: { action: 'asc' } };
+      const query = buildQueryMock([]);
+
+      await getHandler(COMPANY_A)({ model: 'Permission', operation: 'findMany', args: originalArgs, query });
+
+      expect(query).toHaveBeenCalledWith(originalArgs);
+    });
+
+    it('does not inject companyId into create data for User', async () => {
+      const query = buildQueryMock({ id: 'user-001' });
+
+      await getHandler(COMPANY_A)({
+        model: 'User',
+        operation: 'create',
+        args: { data: { email: 'test@example.com', passwordHash: 'hash' } },
+        query,
+      });
+
+      const calledArgs = query.mock.calls[0]?.[0] as { data: Record<string, unknown> };
+      expect(calledArgs.data.companyId).toBeUndefined();
+    });
+
+    it('does not inject companyId into where for update on RefreshToken', async () => {
+      const query = buildQueryMock({ id: 'rt-001' });
+
+      await getHandler(COMPANY_A)({
+        model: 'RefreshToken',
+        operation: 'update',
+        args: { where: { id: 'rt-001' }, data: { revokedAt: '2024-03-15T10:00:00.000Z' } },
+        query,
+      });
+
+      const calledArgs = query.mock.calls[0]?.[0] as { where: Record<string, unknown> };
+      expect(calledArgs.where.companyId).toBeUndefined();
+    });
+  });
+
+  describe('cross-tenant read isolation', () => {
+    it('two scoped clients with different companyIds produce independent where clauses', async () => {
+      const queryA = buildQueryMock([{ id: 'emp-a', companyId: COMPANY_A }]);
+      const queryB = buildQueryMock([]);
+
+      await getHandler(COMPANY_A)({ model: 'Employee', operation: 'findMany', args: {}, query: queryA });
+      await getHandler(COMPANY_B)({ model: 'Employee', operation: 'findMany', args: {}, query: queryB });
+
+      const argsA = queryA.mock.calls[0]?.[0] as { where: { companyId: string } };
+      const argsB = queryB.mock.calls[0]?.[0] as { where: { companyId: string } };
+      expect(argsA.where.companyId).toBe(COMPANY_A);
+      expect(argsB.where.companyId).toBe(COMPANY_B);
+      expect(argsA.where.companyId).not.toBe(argsB.where.companyId);
+    });
+
+    it('scoped client for Company A cannot read data from Company B even if args contain Company B id', async () => {
+      const query = buildQueryMock([]);
+
+      await getHandler(COMPANY_A)({
+        model: 'Payslip',
+        operation: 'findMany',
+        args: { where: { companyId: COMPANY_B } },
+        query,
+      });
+
+      const calledArgs = query.mock.calls[0]?.[0] as { where: { companyId: string } };
+      expect(calledArgs.where.companyId).toBe(COMPANY_A);
     });
   });
 });

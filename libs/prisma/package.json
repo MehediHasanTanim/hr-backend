@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. --config vitest.config.ts --passWithNoTests",
+    "test:watch": "vitest --root ../.. --config vitest.config.ts --passWithNoTests",
+    "test:coverage": "vitest run --root ../.. --config vitest.config.ts --coverage --passWithNoTests",
     "migrate:dev": "prisma migrate dev",
     "migrate:reset": "prisma migrate reset",
     "migrate:deploy": "prisma migrate deploy",

@@ -24,7 +24,8 @@
       "@hr/shared": ["libs/shared/src/index.ts"],
       "@hr/shared/*": ["libs/shared/src/*"],
       "@hr/prisma": ["libs/prisma/src/index.ts"],
-      "@hr/prisma/*": ["libs/prisma/src/*"]
+      "@hr/prisma/*": ["libs/prisma/src/*"],
+      "@/*": ["apps/api/src/*"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true

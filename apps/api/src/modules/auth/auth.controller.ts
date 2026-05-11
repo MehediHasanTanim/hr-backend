@@ -36,9 +36,10 @@ export class AuthController {
     @Body() dto: LoginBody,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const { accessToken, refreshToken } = await this.authService.login(dto as LoginDto);
-    this.tokenService.setRefreshTokenCookie(reply, refreshToken);
-    return { accessToken };
+    const result = await this.authService.login(dto as LoginDto);
+    if ('mfaRequired' in result) return result;
+    this.tokenService.setRefreshTokenCookie(reply, result.refreshToken);
+    return { accessToken: result.accessToken };
   }
 
   @Post('refresh')

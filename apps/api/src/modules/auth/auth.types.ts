@@ -16,6 +16,13 @@ export interface LoginWithRefreshResult extends LoginResult {
   refreshToken: string;
 }
 
+export interface LoginMfaRequiredResult {
+  mfaRequired: true;
+  mfaToken: string;
+}
+
+export type LoginResultWithMfa = LoginWithRefreshResult | LoginMfaRequiredResult;
+
 export interface RegisterResult {
   company: Pick<Company, 'id' | 'name' | 'slug' | 'country' | 'timezone' | 'currency'>;
   user: Pick<User, 'id' | 'email' | 'firstName' | 'lastName' | 'isActive'>;

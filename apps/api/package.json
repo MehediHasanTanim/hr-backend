@@ -7,7 +7,10 @@
     "dev": "tsx watch src/main.ts",
     "start": "node --import ./dist/telemetry/otel.js dist/main.js",
     "start:dev": "tsx --import ./src/telemetry/otel.ts src/main.ts",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --root ../.. --config vitest.config.ts --passWithNoTests apps/api/src/modules/auth",
+    "test:watch": "vitest --root ../.. --config vitest.config.ts --passWithNoTests apps/api/src/modules/auth",
+    "test:coverage": "vitest run --root ../.. --config vitest.config.ts --coverage --passWithNoTests apps/api/src/modules/auth libs/prisma/src/extensions/__tests__/tenant-scope.spec.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

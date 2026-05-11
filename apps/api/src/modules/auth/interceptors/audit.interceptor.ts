@@ -50,20 +50,20 @@ export class AuditInterceptor implements NestInterceptor {
 
     const before = Date.now();
     const user = request.user;
+    if (!user) return next.handle();
     const requestBody = sanitizeAuditPayload(request.body);
     const [, , , resource = 'unknown', resourceId] = request.url.split('/');
 
     return next.handle().pipe(
       tap({
-        next: (responseData: unknown) => {
+        next: () => {
           void this.writeAuditLog({
             companyId: user?.companyId ?? '',
             userId: user?.userId,
             action: `${resource}.${this.methodToAction(request.method)}`,
             resource,
             resourceId,
-            before: requestBody as Prisma.InputJsonValue,
-            after: sanitizeAuditPayload(responseData) as Prisma.InputJsonValue,
+            after: requestBody as Prisma.InputJsonValue,
             ipAddress: request.ip,
             userAgent: request.headers['user-agent'],
             traceId: user?.traceId,
