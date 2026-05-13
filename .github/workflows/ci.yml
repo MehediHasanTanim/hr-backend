@@ -86,3 +86,82 @@ jobs:
             apps/api/dist
             apps/worker/dist
           retention-days: 3
+
+  regression:
+    name: Regression Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: hr_user
+          POSTGRES_PASSWORD: hr_secret
+          POSTGRES_DB: hr_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-retries 5
+      mailhog:
+        image: mailhog/mailhog
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://hr_user:hr_secret@localhost:5432/hr_test
+      REDIS_URL: redis://localhost:6379/1
+      JWT_PRIVATE_KEY_PATH: ./keys/private.pem
+      JWT_PUBLIC_KEY_PATH: ./keys/public.pem
+      COOKIE_SECRET: test-cookie-secret-with-at-least-32-characters
+      MAIL_HOST: localhost
+      MAIL_PORT: 1025
+      MAIL_FROM: noreply@test.hr
+      MINIO_ENDPOINT: localhost
+      MINIO_ACCESS_KEY: test
+      MINIO_SECRET_KEY: test-secret
+      LOG_LEVEL: error
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Push Prisma schema to test DB
+        run: pnpm --filter @hr/prisma exec prisma db push --schema schema.prisma
+      - name: Create restricted audit_logs DB role
+        run: |
+          psql "$DATABASE_URL" -c "
+            DO \$\$ BEGIN
+              IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'hr_app') THEN
+                CREATE ROLE hr_app LOGIN PASSWORD 'hr_app_secret';
+              END IF;
+            END \$\$;
+            GRANT SELECT, INSERT ON audit_logs TO hr_app;
+            REVOKE UPDATE, DELETE ON audit_logs FROM hr_app;
+          "
+      - name: Run Sprint 1 regression tests
+        run: pnpm --filter @hr/api test:regression
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-report
+          path: apps/api/coverage/regression-report.html
+          retention-days: 14

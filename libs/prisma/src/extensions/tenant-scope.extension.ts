@@ -8,6 +8,16 @@ const UNSCOPED_MODELS = new Set([
 ] as const);
 
 const SOFT_DELETE_ONLY_MODELS = new Set(['User'] as const);
+const SOFT_DELETE_MODELS = new Set([
+  'Company',
+  'Department',
+  'Employee',
+  'EmployeeDocument',
+  'Project',
+  'Role',
+  'User',
+  'Voicemail',
+] as const);
 
 type Args = { where?: Record<string, unknown>; data?: unknown } & Record<string, unknown>;
 type QueryFn = (args: Args) => unknown;
@@ -42,7 +52,7 @@ export function applyTenantScopeOperation(input: ScopeOperationInput): unknown {
       nextArgs.where = {
         ...(nextArgs.where ?? {}),
         companyId,
-        deletedAt: null,
+        ...(SOFT_DELETE_MODELS.has(model as never) ? { deletedAt: null } : {}),
       };
     } else if (isSoftDeleteOnly) {
       nextArgs.where = {

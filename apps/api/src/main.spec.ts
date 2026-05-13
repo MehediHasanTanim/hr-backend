@@ -38,6 +38,11 @@ describe('main bootstrap', () => {
       register: vi.fn().mockResolvedValue(undefined),
       enableCors: vi.fn(),
       setGlobalPrefix: vi.fn(),
+      getHttpAdapter: vi.fn().mockReturnValue({
+        getInstance: vi.fn().mockReturnValue({
+          addHook: vi.fn(),
+        }),
+      }),
       listen,
     } as unknown as NestFastifyApplication;
 

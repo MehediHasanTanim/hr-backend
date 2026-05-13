@@ -15,6 +15,11 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CompanyModule } from './modules/company/company.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
+import { EmployeesModule } from './modules/employees/employees.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
+import { DepartmentsModule } from './modules/departments/departments.module';
 
 @Module({
   imports: [
@@ -42,6 +47,11 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     CompanyModule,
     UsersModule,
+    EmployeesModule,
+    PayrollModule,
+    LeaveModule,
+    ComplianceModule,
+    DepartmentsModule,
   ],
   providers: [
     LogContextMiddleware,

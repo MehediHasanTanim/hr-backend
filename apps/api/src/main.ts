@@ -11,12 +11,14 @@ import { bootstrapPipes } from './pipes/pipes.bootstrap';
 import { bootstrapFilters } from './filters/filters.bootstrap';
 import { bootstrapInterceptors } from './interceptors/interceptors.bootstrap';
 import { AppConfigService } from './config/config.service';
+import { registerSecurityHeaders } from './security/security-headers';
+import { PARSER_BODY_LIMIT_BYTES, registerRequestBodyLimit } from './security/request-body-limit';
 
 export async function bootstrap(): Promise<void> {
   const adapter = new FastifyAdapter({
     logger: false,
     trustProxy: true,
-    bodyLimit: 10_485_760,
+    bodyLimit: PARSER_BODY_LIMIT_BYTES,
   });
 
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -55,6 +57,8 @@ export async function bootstrap(): Promise<void> {
   });
 
   app.setGlobalPrefix('api/v1', { exclude: ['/health'] });
+  registerRequestBodyLimit(app);
+  registerSecurityHeaders(app);
 
   bootstrapFilters(app);
   bootstrapPipes(app);

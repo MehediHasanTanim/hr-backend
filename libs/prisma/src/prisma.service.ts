@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { AppConfigService } from '@hr/api/config';
 import { softDeleteExtension } from './extensions/soft-delete.extension';
@@ -8,7 +8,7 @@ import { withTenantScope } from './extensions/tenant-scope.extension';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
 
-  constructor(@Optional() @Inject(AppConfigService) config?: AppConfigService) {
+  constructor(config?: AppConfigService) {
     super({
       datasourceUrl: config?.get('db').url ?? process.env.DATABASE_URL,
       log: [
@@ -16,6 +16,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         { emit: 'event', level: 'error' },
         { emit: 'event', level: 'warn' },
       ],
+    });
+    Object.defineProperty(this, 'unscopedClient', {
+      value: this,
+      enumerable: false,
     });
   }
 

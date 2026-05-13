@@ -10,7 +10,9 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --root ../.. --config vitest.config.ts --passWithNoTests apps/api/src/modules/auth",
     "test:watch": "vitest --root ../.. --config vitest.config.ts --passWithNoTests apps/api/src/modules/auth",
-    "test:coverage": "vitest run --root ../.. --config vitest.config.ts --coverage --passWithNoTests apps/api/src/modules/auth libs/prisma/src/extensions/__tests__/tenant-scope.spec.ts"
+    "test:coverage": "vitest run --root ../.. --config vitest.config.ts --coverage --passWithNoTests apps/api/src/modules/auth libs/prisma/src/extensions/__tests__/tenant-scope.spec.ts",
+    "test:regression": "vitest run --config src/__tests__/vitest.integration.config.ts",
+    "test:regression:watch": "vitest --config src/__tests__/vitest.integration.config.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

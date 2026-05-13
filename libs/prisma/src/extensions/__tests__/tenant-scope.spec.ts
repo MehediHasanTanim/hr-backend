@@ -10,7 +10,7 @@ type AllOperationsHandler = (params: {
   query: QueryMock;
 }) => Promise<unknown>;
 
-function buildQueryMock<T = unknown>(returnValue: T = {} as T) {
+function buildQueryMock<T = unknown>(returnValue: T = {} as T): ReturnType<typeof vi.fn> {
   return vi.fn().mockResolvedValue(returnValue);
 }
 
@@ -30,8 +30,9 @@ beforeEach(() => {
 
 describe('withTenantScope() Prisma extension', () => {
   describe('READ operations on tenant-scoped models', () => {
-    for (const operation of ['findMany', 'findFirst', 'findFirstOrThrow', 'count', 'aggregate', 'groupBy']) {
-      it(`injects companyId and deletedAt:null into where clause for ${operation}`, async () => {
+    it.each(['findMany', 'findFirst', 'findFirstOrThrow', 'count', 'aggregate', 'groupBy'])(
+      'injects companyId and deletedAt:null into where clause for %s',
+      async (operation) => {
         const query = buildQueryMock([]);
 
         await getHandler(COMPANY_A)({ model: 'Employee', operation, args: {}, query });
@@ -39,8 +40,8 @@ describe('withTenantScope() Prisma extension', () => {
         expect(query).toHaveBeenCalledWith(expect.objectContaining({
           where: expect.objectContaining({ companyId: COMPANY_A, deletedAt: null }),
         }));
-      });
-    }
+      },
+    );
 
     it('preserves existing where conditions alongside injected tenant filters', async () => {
       const query = buildQueryMock([]);
@@ -77,7 +78,7 @@ describe('withTenantScope() Prisma extension', () => {
     });
 
     it('handles findUnique and findUniqueOrThrow with companyId injection', async () => {
-      for (const operation of ['findUnique', 'findUniqueOrThrow']) {
+      await Promise.all(['findUnique', 'findUniqueOrThrow'].map(async (operation) => {
         const query = buildQueryMock(null);
 
         await getHandler(COMPANY_A)({
@@ -90,7 +91,7 @@ describe('withTenantScope() Prisma extension', () => {
         expect(query).toHaveBeenCalledWith(expect.objectContaining({
           where: expect.objectContaining({ id: 'emp-001', companyId: COMPANY_A, deletedAt: null }),
         }));
-      }
+      }));
     });
   });
 
@@ -182,7 +183,7 @@ describe('withTenantScope() Prisma extension', () => {
         query,
       });
 
-      const calledArgs = query.mock.calls[0]?.[0] as { data: Array<{ companyId: string }> };
+      const calledArgs = query.mock.calls[0]?.[0] as { data: { companyId: string }[] };
       expect(calledArgs.data.map((item) => item.companyId)).toEqual([COMPANY_A, COMPANY_A]);
     });
 
@@ -196,7 +197,7 @@ describe('withTenantScope() Prisma extension', () => {
         query,
       });
 
-      const calledArgs = query.mock.calls[0]?.[0] as { data: { data: Array<{ companyId: string }> } };
+      const calledArgs = query.mock.calls[0]?.[0] as { data: { data: { companyId: string }[] } };
       expect(calledArgs.data.data.map((item) => item.companyId)).toEqual([COMPANY_A, COMPANY_A]);
     });
 

@@ -7,6 +7,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['apps/**/src/**/*.spec.ts', 'libs/**/src/**/*.spec.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'apps/api/src/__tests__/regression/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],

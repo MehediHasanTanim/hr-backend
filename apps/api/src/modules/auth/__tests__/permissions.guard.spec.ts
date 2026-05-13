@@ -5,7 +5,7 @@ import { ForbiddenError } from '@hr/shared';
 import { buildRequestContext } from '@/__mocks__/factories';
 import { PermissionsGuard } from '../guards/permissions.guard';
 
-type RequiredPermission = Array<{ resource: string; action: string }>;
+type RequiredPermission = { resource: string; action: string }[];
 
 function buildCtx(userPermissions: string[]): ExecutionContext {
   return {

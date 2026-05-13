@@ -46,8 +46,8 @@ describe('envSchema', () => {
     expect(error).toBeDefined();
   });
 
-  it('rejects undeclared env vars', () => {
+  it('allows undeclared env vars from the host runtime', () => {
     const { error } = envSchema.validate({ ...validEnv, FOO_BAR: 'xyz' });
-    expect(error).toBeDefined();
+    expect(error).toBeUndefined();
   });
 });

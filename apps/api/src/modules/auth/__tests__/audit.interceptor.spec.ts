@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import type { CallHandler, ExecutionContext } from '@nestjs/common';
 import { lastValueFrom, of, throwError } from 'rxjs';
-import type { RequestContext } from '@/common/context/request-context';
 import { buildRequestContext, createPrismaMock } from '@/__mocks__/factories';
 import { AuditInterceptor } from '../interceptors/audit.interceptor';
 
@@ -12,7 +11,7 @@ vi.mock('@hr/prisma', () => ({
 function buildCtx(
   method: string,
   url: string,
-  userContext?: RequestContext | null,
+  userContext: unknown = null,
   body: unknown = {},
 ): ExecutionContext {
   const request = {
@@ -41,13 +40,13 @@ function buildErrorHandler(error: Error): CallHandler {
 
 let interceptor: AuditInterceptor;
 let prisma: ReturnType<typeof createPrismaMock>;
-let writeLogSpy: MockInstance<(data: unknown) => Promise<void>>;
+let writeLogSpy: MockInstance<(data: unknown, options?: unknown) => Promise<void>>;
 
 beforeEach(() => {
   prisma = createPrismaMock();
   interceptor = new AuditInterceptor(prisma as never);
   writeLogSpy = vi.spyOn(
-    interceptor as unknown as { writeAuditLog: (data: unknown) => Promise<void> },
+    interceptor as unknown as { writeAuditLog: (data: unknown, options?: unknown) => Promise<void> },
     'writeAuditLog',
   ).mockResolvedValue(undefined);
 
@@ -61,28 +60,24 @@ afterEach(() => {
 
 describe('AuditInterceptor', () => {
   describe('HTTP method filtering', () => {
-    for (const method of ['GET', 'HEAD', 'OPTIONS']) {
-      it(`does not write audit log for ${method} requests`, async () => {
-        await lastValueFrom(interceptor.intercept(
-          buildCtx(method, '/api/v1/employees', buildRequestContext()),
-          buildHandler(),
-        ));
+    it.each(['GET', 'HEAD', 'OPTIONS'])('does not write audit log for %s requests', async (method) => {
+      await lastValueFrom(interceptor.intercept(
+        buildCtx(method, '/api/v1/employees', buildRequestContext()),
+        buildHandler(),
+      ));
 
-        expect(writeLogSpy).not.toHaveBeenCalled();
-      });
-    }
+      expect(writeLogSpy).not.toHaveBeenCalled();
+    });
 
-    for (const method of ['POST', 'PATCH', 'PUT', 'DELETE']) {
-      it(`writes audit log for ${method} requests`, async () => {
-        await lastValueFrom(interceptor.intercept(
-          buildCtx(method, '/api/v1/employees', buildRequestContext()),
-          buildHandler(),
-        ));
-        await vi.runAllTimersAsync();
+    it.each(['POST', 'PATCH', 'PUT', 'DELETE'])('writes audit log for %s requests', async (method) => {
+      await lastValueFrom(interceptor.intercept(
+        buildCtx(method, '/api/v1/employees', buildRequestContext()),
+        buildHandler(),
+      ));
+      await vi.runAllTimersAsync();
 
-        expect(writeLogSpy).toHaveBeenCalledTimes(1);
-      });
-    }
+      expect(writeLogSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('audit log content', () => {
@@ -93,7 +88,10 @@ describe('AuditInterceptor', () => {
       ));
       await vi.runAllTimersAsync();
 
-      expect(writeLogSpy).toHaveBeenCalledWith(expect.objectContaining({ action: 'employees.create' }));
+      expect(writeLogSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'employees.create' }),
+        expect.objectContaining({ delayMs: 0, fail: false }),
+      );
     });
 
     it('records the correct action for PATCH requests', async () => {
@@ -103,7 +101,10 @@ describe('AuditInterceptor', () => {
       ));
       await vi.runAllTimersAsync();
 
-      expect(writeLogSpy).toHaveBeenCalledWith(expect.objectContaining({ action: 'employees.update' }));
+      expect(writeLogSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'employees.update' }),
+        expect.objectContaining({ delayMs: 0, fail: false }),
+      );
     });
 
     it('records the correct action for DELETE requests', async () => {
@@ -113,7 +114,10 @@ describe('AuditInterceptor', () => {
       ));
       await vi.runAllTimersAsync();
 
-      expect(writeLogSpy).toHaveBeenCalledWith(expect.objectContaining({ action: 'employees.delete' }));
+      expect(writeLogSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'employees.delete' }),
+        expect.objectContaining({ delayMs: 0, fail: false }),
+      );
     });
 
     it('records actor identifiers from RequestContext', async () => {
@@ -121,10 +125,13 @@ describe('AuditInterceptor', () => {
       await lastValueFrom(interceptor.intercept(buildCtx('POST', '/api/v1/payroll', user), buildHandler()));
       await vi.runAllTimersAsync();
 
-      expect(writeLogSpy).toHaveBeenCalledWith(expect.objectContaining({
-        userId: 'actor-001',
-        companyId: 'company-001',
-      }));
+      expect(writeLogSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'actor-001',
+          companyId: 'company-001',
+        }),
+        expect.objectContaining({ delayMs: 0, fail: false }),
+      );
     });
 
     it('records resource and resourceId from the URL path', async () => {
@@ -134,10 +141,13 @@ describe('AuditInterceptor', () => {
       ));
       await vi.runAllTimersAsync();
 
-      expect(writeLogSpy).toHaveBeenCalledWith(expect.objectContaining({
-        resource: 'employees',
-        resourceId: 'emp-uuid-999',
-      }));
+      expect(writeLogSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resource: 'employees',
+          resourceId: 'emp-uuid-999',
+        }),
+        expect.objectContaining({ delayMs: 0, fail: false }),
+      );
     });
 
     it('records the IP address and user agent from the request', async () => {
@@ -147,10 +157,13 @@ describe('AuditInterceptor', () => {
       ));
       await vi.runAllTimersAsync();
 
-      expect(writeLogSpy).toHaveBeenCalledWith(expect.objectContaining({
-        ipAddress: '127.0.0.1',
-        userAgent: 'Test/1.0',
-      }));
+      expect(writeLogSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ipAddress: '127.0.0.1',
+          userAgent: 'Test/1.0',
+        }),
+        expect.objectContaining({ delayMs: 0, fail: false }),
+      );
     });
   });
 
@@ -202,7 +215,9 @@ describe('AuditInterceptor', () => {
 
   describe('fire-and-forget non-blocking behavior', () => {
     it('does not block the response when audit write is slow', async () => {
-      writeLogSpy.mockImplementation(() => new Promise(() => undefined));
+      writeLogSpy.mockImplementation(() => new Promise(() => {
+        // Intentionally never resolves; the interceptor must not await it.
+      }));
 
       const resultPromise = lastValueFrom(interceptor.intercept(
         buildCtx('POST', '/api/v1/employees', buildRequestContext()),
@@ -240,14 +255,17 @@ describe('AuditInterceptor', () => {
       expect(writeLogSpy).not.toHaveBeenCalled();
     });
 
-    it('does not write an audit log when the request handler throws an error', async () => {
+    it('writes a failed audit log when the request handler throws an error', async () => {
       await expect(lastValueFrom(interceptor.intercept(
         buildCtx('POST', '/api/v1/employees', buildRequestContext()),
         buildErrorHandler(new Error('Validation failed')),
       ))).rejects.toThrow('Validation failed');
       await vi.runAllTimersAsync();
 
-      expect(writeLogSpy).not.toHaveBeenCalled();
+      expect(writeLogSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'employees.create.failed' }),
+        expect.objectContaining({ delayMs: 0, fail: false }),
+      );
     });
   });
 

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { UnauthorizedError } from '@hr/shared';
@@ -17,7 +17,9 @@ import { VerifyEmailBody, type VerifyEmailDto } from './dto/refresh.dto';
 @Throttle({ default: { ttl: 60_000, limit: 10 } })
 export class AuthController {
   constructor(
+    @Inject(AuthService)
     private readonly authService: AuthService,
+    @Inject(TokenService)
     private readonly tokenService: TokenService,
   ) {}
 
@@ -57,6 +59,11 @@ export class AuthController {
     const { accessToken, refreshToken } = await this.tokenService.rotateRefreshToken(rawToken, sessionId);
     this.tokenService.setRefreshTokenCookie(reply, refreshToken);
     return { accessToken };
+  }
+
+  @Get('me')
+  me(@CurrentUser() user: RequestContext) {
+    return user;
   }
 
   @Post('forgot-password')

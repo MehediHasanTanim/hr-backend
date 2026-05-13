@@ -3,8 +3,8 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { Resource } from '@opentelemetry/resources';
 import {
-  ATTR_DEPLOYMENT_ENVIRONMENT_NAME,
   ATTR_SERVICE_NAME,
+  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
 } from '@opentelemetry/semantic-conventions';
 import {
   ParentBasedSampler,
@@ -17,7 +17,7 @@ const samplerRatio = Number(process.env.OTEL_TRACES_SAMPLER_ARG ?? '1.0');
 export const sdk = new NodeSDK({
   resource: new Resource({
     [ATTR_SERVICE_NAME]: process.env.OTEL_SERVICE_NAME ?? 'hr-api',
-    [ATTR_DEPLOYMENT_ENVIRONMENT_NAME]: process.env.NODE_ENV ?? 'development',
+    [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV ?? 'development',
   }),
   sampler: new ParentBasedSampler({
     root: new TraceIdRatioBasedSampler(samplerRatio),

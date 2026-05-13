@@ -12,8 +12,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     if (
-      this.config.get('app').nodeEnv === 'test'
-      || (process.env.VITEST_WORKER_ID ?? false)
+      (this.config.get('app').nodeEnv === 'test' && process.env.VITEST_REGRESSION !== 'true')
+      || ((process.env.VITEST_WORKER_ID ?? false) && process.env.VITEST_REGRESSION !== 'true')
       || process.env.DATABASE_URL === 'postgresql://user:pass@localhost:5432/db'
     ) {
       return;

@@ -83,9 +83,10 @@ describe('JwtAuthGuard', () => {
     });
 
     it('throws UnauthorizedError when Authorization header does not start with Bearer', async () => {
-      for (const badHeader of ['Basic abc123', 'Token xyz', 'bearer lowercase', 'abc123', 'Bearer ']) {
-        await expect(guard.canActivate(buildExecutionContext(badHeader))).rejects.toThrow(UnauthorizedError);
-      }
+      await Promise.all(
+        ['Basic abc123', 'Token xyz', 'bearer lowercase', 'abc123', 'Bearer '].map((badHeader) =>
+          expect(guard.canActivate(buildExecutionContext(badHeader))).rejects.toThrow(UnauthorizedError)),
+      );
     });
 
     it('extracts token correctly from Bearer token format', async () => {
@@ -147,7 +148,7 @@ describe('JwtAuthGuard', () => {
 
       await guard.canActivate(ctx);
 
-      const request = ctx.switchToHttp().getRequest() as { user: RequestContext };
+      const request = ctx.switchToHttp().getRequest<{ user: RequestContext }>();
       expect(request.user).toMatchObject({
         userId: 'user-uuid-001',
         companyId: 'company-uuid-001',
@@ -181,7 +182,10 @@ describe('JwtAuthGuard', () => {
         sessionId: 's1',
       });
       const ctx = buildExecutionContext('Bearer tok');
-      const req = ctx.switchToHttp().getRequest() as { headers: Record<string, string>; user: RequestContext };
+      const req = ctx.switchToHttp().getRequest<{
+        headers: Record<string, string>;
+        user: RequestContext;
+      }>();
       req.headers['x-trace-id'] = 'my-trace-123';
 
       await guard.canActivate(ctx);
@@ -198,7 +202,10 @@ describe('JwtAuthGuard', () => {
         sessionId: 's1',
       });
       const ctx = buildExecutionContext('Bearer tok');
-      const req = ctx.switchToHttp().getRequest() as { headers: Record<string, string | undefined>; user: RequestContext };
+      const req = ctx.switchToHttp().getRequest<{
+        headers: Record<string, string | undefined>;
+        user: RequestContext;
+      }>();
       req.headers['x-trace-id'] = undefined;
 
       await guard.canActivate(ctx);
@@ -215,7 +222,10 @@ describe('JwtAuthGuard', () => {
         sessionId: 's1',
       });
       const ctx = buildExecutionContext('Bearer valid-token');
-      const req = ctx.switchToHttp().getRequest() as { body: { companyId: string }; user: RequestContext };
+      const req = ctx.switchToHttp().getRequest<{
+        body: { companyId: string };
+        user: RequestContext;
+      }>();
       req.body = { companyId: 'attacker-company-id' };
 
       await guard.canActivate(ctx);

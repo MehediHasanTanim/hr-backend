@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as crypto from 'node:crypto';
+import * as jwt from 'jsonwebtoken';
 import { UnauthorizedError } from '@hr/shared';
 import { RedisKeys } from '@/common/redis/redis-keys';
 import { createConfigMock, createRedisMock } from '@/__mocks__/factories';
@@ -13,8 +14,6 @@ vi.mock('jsonwebtoken', () => ({
   sign: vi.fn().mockReturnValue('signed-access-token'),
   verify: vi.fn(),
 }));
-
-import * as jwt from 'jsonwebtoken';
 
 vi.mock('node:crypto', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:crypto')>();
@@ -38,7 +37,13 @@ const MOCK_ROLES = ['role-admin-uuid'];
 const DETERMINISTIC_TOKEN = Buffer.alloc(32, 0xab).toString('hex');
 const DETERMINISTIC_HASH = crypto.createHash('sha256').update(DETERMINISTIC_TOKEN).digest('hex');
 
-function refreshMeta(sessionId = MOCK_SESSION_ID) {
+function refreshMeta(sessionId = MOCK_SESSION_ID): {
+  userId: string;
+  companyId: string;
+  email: string;
+  roles: string[];
+  sessionId: string;
+} {
   return {
     userId: MOCK_USER_ID,
     companyId: MOCK_COMPANY_ID,

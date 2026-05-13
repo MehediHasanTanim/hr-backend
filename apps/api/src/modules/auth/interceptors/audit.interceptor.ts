@@ -53,14 +53,34 @@ export class AuditInterceptor implements NestInterceptor {
     if (!user) return next.handle();
     const requestBody = sanitizeAuditPayload(request.body);
     const [, , , resource = 'unknown', resourceId] = request.url.split('/');
+    const isTest = process.env.NODE_ENV === 'test';
+    const auditDelay = isTest ? Number(request.headers['x-test-audit-delay'] ?? 0) : 0;
+    const auditFail = isTest && request.headers['x-test-audit-fail'] === 'true';
 
     return next.handle().pipe(
       tap({
-        next: () => {
+        next: (value) => {
+          const responseResourceId = this.extractResourceId(value);
           void this.writeAuditLog({
             companyId: user?.companyId ?? '',
             userId: user?.userId,
             action: `${resource}.${this.methodToAction(request.method)}`,
+            resource,
+            resourceId: resourceId ?? responseResourceId,
+            after: requestBody as Prisma.InputJsonValue,
+            ipAddress: request.ip,
+            userAgent: request.headers['user-agent'],
+            traceId: user?.traceId,
+            durationMs: Date.now() - before,
+          }, { delayMs: auditDelay, fail: auditFail }).catch((err) => {
+            this.logger.error({ err, traceId: user?.traceId }, 'Audit log write failed');
+          });
+        },
+        error: () => {
+          void this.writeAuditLog({
+            companyId: user?.companyId ?? '',
+            userId: user?.userId,
+            action: `${resource}.${this.methodToAction(request.method)}.failed`,
             resource,
             resourceId,
             after: requestBody as Prisma.InputJsonValue,
@@ -68,7 +88,7 @@ export class AuditInterceptor implements NestInterceptor {
             userAgent: request.headers['user-agent'],
             traceId: user?.traceId,
             durationMs: Date.now() - before,
-          }).catch((err) => {
+          }, { delayMs: auditDelay, fail: auditFail }).catch((err) => {
             this.logger.error({ err, traceId: user?.traceId }, 'Audit log write failed');
           });
         },
@@ -80,8 +100,28 @@ export class AuditInterceptor implements NestInterceptor {
     return { POST: 'create', PATCH: 'update', PUT: 'replace', DELETE: 'delete' }[method] ?? 'mutate';
   }
 
-  private async writeAuditLog(data: AuditLogInput): Promise<void> {
+  private extractResourceId(value: unknown): string | undefined {
+    if (value && typeof value === 'object') {
+      const body = value as { id?: unknown; data?: { id?: unknown } };
+      const id = body.id ?? body.data?.id;
+      return typeof id === 'string' ? id : undefined;
+    }
+    return undefined;
+  }
+
+  private async writeAuditLog(
+    data: AuditLogInput,
+    testOptions: { delayMs: number; fail: boolean } = { delayMs: 0, fail: false },
+  ): Promise<void> {
     if (!data.companyId) return;
+    if (testOptions.delayMs > 0) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, testOptions.delayMs);
+      });
+    }
+    if (testOptions.fail) {
+      throw new Error('Forced audit write failure');
+    }
     const persisted = {
       companyId: data.companyId,
       userId: data.userId,

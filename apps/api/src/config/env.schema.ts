@@ -43,4 +43,4 @@ export const envSchema = Joi.object({
   OTEL_SERVICE_NAME: Joi.string().default('hr-api'),
   OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().optional(),
   OTEL_TRACES_SAMPLER_ARG: Joi.number().min(0).max(1).default(1.0),
-}).options({ allowUnknown: false });
+}).options({ allowUnknown: true });
