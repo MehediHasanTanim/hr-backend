@@ -43,6 +43,9 @@ export class AppConfigService {
       cookie: {
         secret: this.config.getOrThrow<string>('COOKIE_SECRET'),
       },
+      encryption: {
+        key: this.config.getOrThrow<string>('ENCRYPTION_KEY'),
+      },
       mail: {
         host: this.config.getOrThrow<string>('MAIL_HOST'),
         port: this.config.get<number>('MAIL_PORT', 587),
@@ -59,6 +62,9 @@ export class AppConfigService {
       },
       log: {
         level: this.config.get<string>('LOG_LEVEL', 'info'),
+        fileEnabled: this.config.get<boolean>('LOG_FILE_ENABLED', false),
+        filePath: this.config.get<string>('LOG_FILE_PATH', 'logs/hr-api.log'),
+        fileLevel: this.config.get<string>('LOG_FILE_LEVEL'),
       },
       otel: {
         serviceName: this.config.get<string>('OTEL_SERVICE_NAME', 'hr-api'),

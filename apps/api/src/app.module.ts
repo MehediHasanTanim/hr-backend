@@ -19,7 +19,8 @@ import { EmployeesModule } from './modules/employees/employees.module';
 import { PayrollModule } from './modules/payroll/payroll.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { ComplianceModule } from './modules/compliance/compliance.module';
-import { DepartmentsModule } from './modules/departments/departments.module';
+import { OrgModule } from './modules/org/org.module';
+import { BulkImportModule } from './modules/bulk-import/bulk-import.module';
 
 @Module({
   imports: [
@@ -51,7 +52,8 @@ import { DepartmentsModule } from './modules/departments/departments.module';
     PayrollModule,
     LeaveModule,
     ComplianceModule,
-    DepartmentsModule,
+    OrgModule,
+    BulkImportModule,
   ],
   providers: [
     LogContextMiddleware,

@@ -29,6 +29,9 @@ export interface AppConfig {
   cookie: {
     secret: string;
   };
+  encryption: {
+    key: string;
+  };
   mail: {
     host: string;
     port: number;
@@ -43,7 +46,12 @@ export interface AppConfig {
       clientSecret: string | undefined;
     };
   };
-  log: { level: string };
+  log: {
+    level: string;
+    fileEnabled: boolean;
+    filePath: string;
+    fileLevel: string | undefined;
+  };
   otel: {
     serviceName: string;
     exporterEndpoint: string | undefined;

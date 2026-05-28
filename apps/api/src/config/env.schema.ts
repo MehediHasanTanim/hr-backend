@@ -21,6 +21,7 @@ export const envSchema = Joi.object({
   JWT_PRIVATE_KEY_PATH: Joi.string().required(),
   JWT_PUBLIC_KEY_PATH: Joi.string().required(),
   COOKIE_SECRET: Joi.string().min(32).required(),
+  ENCRYPTION_KEY: Joi.string().required(),
   MAIL_HOST: Joi.string().required(),
   MAIL_PORT: Joi.number().port().default(587),
   MAIL_FROM: Joi.string().required(),
@@ -40,6 +41,11 @@ export const envSchema = Joi.object({
   LOG_LEVEL: Joi.string()
     .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
     .default('info'),
+  LOG_FILE_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
+  LOG_FILE_PATH: Joi.string().default('logs/hr-api.log'),
+  LOG_FILE_LEVEL: Joi.string()
+    .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
+    .optional(),
   OTEL_SERVICE_NAME: Joi.string().default('hr-api'),
   OTEL_EXPORTER_OTLP_ENDPOINT: Joi.string().uri().optional(),
   OTEL_TRACES_SAMPLER_ARG: Joi.number().min(0).max(1).default(1.0),

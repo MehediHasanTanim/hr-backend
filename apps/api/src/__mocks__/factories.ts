@@ -140,6 +140,7 @@ export function createConfigMock(overrides: Partial<AppConfig> = {}): DeepMockPr
     },
     jwt: { privateKey: 'mock-private-key', publicKey: 'mock-public-key' },
     cookie: { secret: 'cookie-secret' },
+    encryption: { key: Buffer.from('12345678901234567890123456789012').toString('base64') },
     mail: { host: 'localhost', port: 1025, from: 'noreply@test.com', user: undefined, pass: undefined },
     sso: { enabled: false, google: { clientId: '', clientSecret: '' } },
     log: { level: 'silent' },

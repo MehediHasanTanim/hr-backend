@@ -11,6 +11,7 @@ const validEnv = {
   JWT_PRIVATE_KEY_PATH: 'keys/private.pem',
   JWT_PUBLIC_KEY_PATH: 'keys/public.pem',
   COOKIE_SECRET: '12345678901234567890123456789012',
+  ENCRYPTION_KEY: Buffer.from('12345678901234567890123456789012').toString('base64'),
   MAIL_HOST: 'localhost',
   MAIL_FROM: 'test@example.com',
 };
@@ -39,6 +40,12 @@ describe('envSchema', () => {
   it('defaults PORT to 3000', () => {
     const { value } = envSchema.validate(validEnv);
     expect(value.PORT).toBe(3000);
+  });
+
+  it('defaults file logging to disabled with a standard path', () => {
+    const { value } = envSchema.validate(validEnv);
+    expect(value.LOG_FILE_ENABLED).toBe(false);
+    expect(value.LOG_FILE_PATH).toBe('logs/hr-api.log');
   });
 
   it('rejects unknown NODE_ENV', () => {

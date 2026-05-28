@@ -11,19 +11,19 @@ datasource db {
 }
 
 model Company {
-  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                 String               @db.VarChar(200)
-  slug                 String               @unique @db.VarChar(100)
-  logoUrl              String?              @db.Text
-  timezone             String               @default("UTC") @db.VarChar(50)
-  country              String               @db.Char(2)
-  currency             String               @default("USD") @db.Char(3)
-  fiscalYearStart      Int                  @default(1)
-  subscriptionTier     SubscriptionTier     @default(STARTER)
-  isActive             Boolean              @default(true)
+  id                   String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                 String                @db.VarChar(200)
+  slug                 String                @unique @db.VarChar(100)
+  logoUrl              String?               @db.Text
+  timezone             String                @default("UTC") @db.VarChar(50)
+  country              String                @db.Char(2)
+  currency             String                @default("USD") @db.Char(3)
+  fiscalYearStart      Int                   @default(1)
+  subscriptionTier     SubscriptionTier      @default(STARTER)
+  isActive             Boolean               @default(true)
   trialEndsAt          DateTime?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
   deletedAt            DateTime?
   departments          Department[]
   employees            Employee[]
@@ -41,6 +41,7 @@ model Company {
   documentTemplates    DocumentTemplate[]
   holidays             Holiday[]
   shifts               Shift[]
+  locations            Location[]
   announcements        Announcement[]
   performanceCycles    PerformanceCycle[]
   recruitmentPipelines RecruitmentPipeline[]
@@ -48,6 +49,8 @@ model Company {
   expensePolicies      ExpensePolicy[]
   projects             Project[]
   jobTitles            JobTitle[]
+  payGrades            PayGrade[]
+  bulkImportJobs       BulkImportJob[]
   salaryRevisions      SalaryRevision[]
   payrollRuns          PayrollRun[]
   taxBrackets          TaxBracket[]
@@ -159,50 +162,57 @@ model Department {
 }
 
 model Employee {
-  id                        String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId                 String                        @db.Uuid
-  employeeNumber            String                        @db.VarChar(30)
-  userId                    String?                       @unique @db.Uuid
-  departmentId              String?                       @db.Uuid
-  managerId                 String?                       @db.Uuid
-  jobTitleId                String?                       @db.Uuid
-  employmentType            EmploymentType
-  status                    EmployeeStatus                @default(ACTIVE)
-  joinedAt                  DateTime                      @db.Date
-  probationEndsAt           DateTime?                     @db.Date
-  exitedAt                  DateTime?                     @db.Date
-  exitReason                String?                       @db.Text
-  workEmail                 String                        @db.Citext
-  workPhone                 String?                       @db.VarChar(30)
-  createdAt                 DateTime                      @default(now())
-  updatedAt                 DateTime                      @updatedAt
-  deletedAt                 DateTime?
-  company                   Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user                      User?                         @relation(fields: [userId], references: [id])
-  department                Department?                   @relation(fields: [departmentId], references: [id])
-  managedDept               Department[]                  @relation("DeptHead")
-  manager                   Employee?                     @relation("ReportingLine", fields: [managerId], references: [id])
-  directReports             Employee[]                    @relation("ReportingLine")
-  jobTitle                  JobTitle?                     @relation(fields: [jobTitleId], references: [id])
-  profile                   EmployeeProfile?
-  roles                     EmployeeRole[]
-  salaryRevisions           SalaryRevision[]
-  leaveAllocations          LeaveAllocation[]
-  leaveRequests             LeaveRequest[]
-  attendanceLogs            AttendanceLog[]
-  payslips                  Payslip[]
-  documents                 EmployeeDocument[]
-  emergencyContacts         EmergencyContact[]
-  bankAccounts              BankAccount[]
-  ivrExtensions             IvrExtension[]
-  performanceReviews        PerformanceReview[]           @relation("Reviewee")
-  authoredPerformanceReviews PerformanceReview[]          @relation("Reviewer")
-  goals                     Goal[]
-  assets                    Asset[]
-  expenses                  Expense[]
-  trainings                 EmployeeTraining[]
-  announcements             AnnouncementAcknowledgement[]
-  projectMemberships        ProjectMember[]
+  id                         String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                  String                        @db.Uuid
+  employeeNumber             String                        @db.VarChar(30)
+  userId                     String?                       @unique @db.Uuid
+  departmentId               String?                       @db.Uuid
+  managerId                  String?                       @db.Uuid
+  jobTitleId                 String?                       @db.Uuid
+  locationId                 String?                       @db.Uuid
+  payGradeId                 String?                       @db.Uuid
+  employmentType             EmploymentType
+  status                     EmployeeStatus                @default(ACTIVE)
+  joinedAt                   DateTime                      @db.Date
+  probationEndsAt            DateTime?                     @db.Date
+  exitedAt                   DateTime?                     @db.Date
+  lastWorkingDate            DateTime?                     @db.Date
+  exitReason                 String?                       @db.Text
+  workEmail                  String                        @db.Citext
+  workPhone                  String?                       @db.VarChar(30)
+  createdAt                  DateTime                      @default(now())
+  updatedAt                  DateTime                      @updatedAt
+  deletedAt                  DateTime?
+  company                    Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user                       User?                         @relation(fields: [userId], references: [id])
+  department                 Department?                   @relation(fields: [departmentId], references: [id])
+  managedDept                Department[]                  @relation("DeptHead")
+  manager                    Employee?                     @relation("ReportingLine", fields: [managerId], references: [id])
+  directReports              Employee[]                    @relation("ReportingLine")
+  jobTitle                   JobTitle?                     @relation(fields: [jobTitleId], references: [id])
+  location                   Location?                     @relation(fields: [locationId], references: [id])
+  payGrade                   PayGrade?                     @relation(fields: [payGradeId], references: [id])
+  profile                    EmployeeProfile?
+  employmentHistory          EmploymentHistory[]
+  addresses                  EmployeeAddress[]
+  roles                      EmployeeRole[]
+  salaryRevisions            SalaryRevision[]
+  leaveAllocations           LeaveAllocation[]
+  leaveRequests              LeaveRequest[]
+  attendanceLogs             AttendanceLog[]
+  payslips                   Payslip[]
+  documents                  EmployeeDocument[]
+  emergencyContacts          EmergencyContact[]
+  bankAccounts               BankAccount[]
+  ivrExtensions              IvrExtension[]
+  performanceReviews         PerformanceReview[]           @relation("Reviewee")
+  authoredPerformanceReviews PerformanceReview[]           @relation("Reviewer")
+  goals                      Goal[]
+  assets                     Asset[]
+  expenses                   Expense[]
+  trainings                  EmployeeTraining[]
+  announcements              AnnouncementAcknowledgement[]
+  projectMemberships         ProjectMember[]
 
   @@unique([companyId, employeeNumber])
   @@unique([companyId, workEmail])
@@ -210,6 +220,8 @@ model Employee {
   @@index([departmentId])
   @@index([managerId])
   @@index([jobTitleId])
+  @@index([locationId])
+  @@index([payGradeId])
   @@index([status])
   @@index([deletedAt])
   @@map("employees")
@@ -274,23 +286,109 @@ model RefreshToken {
 }
 
 model EmployeeProfile {
-  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employeeId     String        @unique @db.Uuid
-  dateOfBirth    DateTime?     @db.Date
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId     String         @unique @db.Uuid
+  dateOfBirth    DateTime?      @db.Date
   gender         Gender?
-  nationality    String?       @db.Char(2)
-  nationalId     String?       @db.VarChar(50)
-  passportNumber String?       @db.VarChar(30)
-  passportExpiry DateTime?     @db.Date
-  personalEmail  String?       @db.Citext
-  personalPhone  String?       @db.VarChar(30)
+  nationality    String?        @db.Char(2)
+  nationalId     Json?
+  passportNumber Json?
+  passportExpiry DateTime?      @db.Date
+  personalEmail  String?        @db.Citext
+  personalPhone  String?        @db.VarChar(30)
   address        Json?
   maritalStatus  MaritalStatus?
-  taxIdentifier  String?       @db.VarChar(50)
-  updatedAt      DateTime      @updatedAt
-  employee       Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  taxIdentifier  String?        @db.VarChar(50)
+  updatedAt      DateTime       @updatedAt
+  employee       Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@map("employee_profiles")
+}
+
+model Location {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String     @db.Uuid
+  name      String     @db.VarChar(150)
+  code      String     @db.VarChar(30)
+  address   Json?
+  timezone  String?    @db.VarChar(50)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([deletedAt])
+  @@map("locations")
+}
+
+model PayGrade {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String     @db.Uuid
+  name      String     @db.VarChar(100)
+  code      String     @db.VarChar(30)
+  minSalary Decimal?   @db.Decimal(15, 2)
+  maxSalary Decimal?   @db.Decimal(15, 2)
+  currency  String     @default("USD") @db.Char(3)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([deletedAt])
+  @@map("pay_grades")
+}
+
+model EmploymentHistory {
+  id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String                @db.Uuid
+  employeeId    String                @db.Uuid
+  eventType     EmploymentHistoryType
+  effectiveDate DateTime              @db.Date
+  departmentId  String?               @db.Uuid
+  jobTitleId    String?               @db.Uuid
+  payGradeId    String?               @db.Uuid
+  locationId    String?               @db.Uuid
+  managerId     String?               @db.Uuid
+  notes         String?               @db.Text
+  metadata      Json?
+  createdById   String?               @db.Uuid
+  createdAt     DateTime              @default(now())
+  employee      Employee              @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([eventType])
+  @@index([effectiveDate])
+  @@map("employment_history")
+}
+
+model EmployeeAddress {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId String      @db.Uuid
+  type       AddressType @default(HOME)
+  line1      String      @db.VarChar(200)
+  line2      String?     @db.VarChar(200)
+  city       String      @db.VarChar(100)
+  state      String?     @db.VarChar(100)
+  postalCode String?     @db.VarChar(30)
+  country    String      @db.Char(2)
+  isPrimary  Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([deletedAt])
+  @@map("employee_addresses")
 }
 
 model EmployeeRole {
@@ -306,49 +404,61 @@ model EmployeeRole {
 }
 
 model JobTitle {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId String    @db.Uuid
-  title     String    @db.VarChar(150)
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String     @db.Uuid
+  title     String     @db.VarChar(150)
+  code      String?    @db.VarChar(30)
   level     Int?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   employees Employee[]
 
   @@unique([companyId, title])
+  @@unique([companyId, code])
   @@index([companyId])
+  @@index([deletedAt])
   @@map("job_titles")
 }
 
 model EmergencyContact {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employeeId   String   @db.Uuid
-  name         String   @db.VarChar(150)
-  relationship String   @db.VarChar(50)
-  phone        String   @db.VarChar(30)
-  email        String?  @db.Citext
-  isPrimary    Boolean  @default(false)
-  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId   String    @db.Uuid
+  name         String    @db.VarChar(150)
+  relationship String    @db.VarChar(50)
+  phone        String    @db.VarChar(30)
+  email        String?   @db.Citext
+  isPrimary    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])
+  @@index([deletedAt])
   @@map("emergency_contacts")
 }
 
 model BankAccount {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employeeId    String   @db.Uuid
-  accountName   String   @db.VarChar(150)
-  accountNumber String   @db.VarChar(50) // stored encrypted at app layer
-  routingNumber String?  @db.VarChar(30)
-  bankName      String   @db.VarChar(100)
-  bankCode      String?  @db.VarChar(30)
-  currency      String   @db.Char(3)
-  isPrimary     Boolean  @default(false)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId    String    @db.Uuid
+  accountName   String    @db.VarChar(150)
+  accountNumber Json
+  routingNumber String?   @db.VarChar(30)
+  bankName      String    @db.VarChar(100)
+  bankCode      String?   @db.VarChar(30)
+  currency      String    @db.Char(3)
+  isPrimary     Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId])
+  @@index([deletedAt])
   @@map("bank_accounts")
 }
 
@@ -670,15 +780,15 @@ model Shift {
 }
 
 model ShiftAssignment {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId     String   @db.Uuid
-  employeeId    String   @db.Uuid
-  shiftId       String   @db.Uuid
-  effectiveFrom DateTime @db.Date
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String    @db.Uuid
+  employeeId    String    @db.Uuid
+  shiftId       String    @db.Uuid
+  effectiveFrom DateTime  @db.Date
   effectiveTo   DateTime? @db.Date
-  createdAt     DateTime @default(now())
-  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  shift         Shift    @relation(fields: [shiftId], references: [id])
+  createdAt     DateTime  @default(now())
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  shift         Shift     @relation(fields: [shiftId], references: [id])
 
   @@index([companyId])
   @@index([employeeId])
@@ -789,22 +899,22 @@ model WorkFromHomeRequest {
 }
 
 model IvrExtension {
-  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId        String       @db.Uuid
-  employeeId       String?      @db.Uuid
-  extension        String       @db.VarChar(20)
-  displayName      String       @db.VarChar(100)
-  type             IvrExtType   @default(USER)
-  password         String       @db.Text // stored hashed
-  voicemailEnabled Boolean      @default(true)
-  doNotDisturb     Boolean      @default(false)
-  callForwardTo    String?      @db.VarChar(20)
-  isActive         Boolean      @default(true)
-  fusionPbxUuid    String?      @unique @db.VarChar(36)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  employee         Employee?    @relation(fields: [employeeId], references: [id])
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String     @db.Uuid
+  employeeId       String?    @db.Uuid
+  extension        String     @db.VarChar(20)
+  displayName      String     @db.VarChar(100)
+  type             IvrExtType @default(USER)
+  password         String     @db.Text // stored hashed
+  voicemailEnabled Boolean    @default(true)
+  doNotDisturb     Boolean    @default(false)
+  callForwardTo    String?    @db.VarChar(20)
+  isActive         Boolean    @default(true)
+  fusionPbxUuid    String?    @unique @db.VarChar(36)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  company          Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee         Employee?  @relation(fields: [employeeId], references: [id])
   cdrs             Cdr[]
 
   @@unique([companyId, extension])
@@ -831,13 +941,13 @@ model IvrMenu {
 }
 
 model IvrMenuOption {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  menuId      String   @db.Uuid
-  digit       String   @db.Char(1)
-  action      String   @db.VarChar(50)
-  destination String?  @db.VarChar(100)
-  order       Int      @default(0)
-  menu        IvrMenu  @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuId      String  @db.Uuid
+  digit       String  @db.Char(1)
+  action      String  @db.VarChar(50)
+  destination String? @db.VarChar(100)
+  order       Int     @default(0)
+  menu        IvrMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
 
   @@unique([menuId, digit])
   @@index([menuId])
@@ -891,18 +1001,18 @@ model Cdr {
 }
 
 model Voicemail {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId    String   @db.Uuid
-  extensionId  String   @db.Uuid
-  callerNumber String   @db.VarChar(30)
-  callerName   String?  @db.VarChar(100)
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String    @db.Uuid
+  extensionId  String    @db.Uuid
+  callerNumber String    @db.VarChar(30)
+  callerName   String?   @db.VarChar(100)
   duration     Int
-  audioUrl     String   @db.Text
-  transcript   String?  @db.Text
-  isRead       Boolean  @default(false)
+  audioUrl     String    @db.Text
+  transcript   String?   @db.Text
+  isRead       Boolean   @default(false)
   readAt       DateTime?
   deletedAt    DateTime?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   @@index([companyId])
   @@index([extensionId])
@@ -930,12 +1040,12 @@ model CallQueue {
 
 model CallQueueMember {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  queueId    String    @db.Uuid
-  extension  String    @db.VarChar(20)
-  priority   Int       @default(1)
-  isActive   Boolean   @default(true)
-  addedAt    DateTime  @default(now())
-  queue      CallQueue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  queueId   String    @db.Uuid
+  extension String    @db.VarChar(20)
+  priority  Int       @default(1)
+  isActive  Boolean   @default(true)
+  addedAt   DateTime  @default(now())
+  queue     CallQueue @relation(fields: [queueId], references: [id], onDelete: Cascade)
 
   @@unique([queueId, extension])
   @@index([queueId])
@@ -943,15 +1053,15 @@ model CallQueueMember {
 }
 
 model DocumentTemplate {
-  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId String           @db.Uuid
-  name      String           @db.VarChar(150)
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String             @db.Uuid
+  name      String             @db.VarChar(150)
   type      DocTemplateType
-  content   String           @db.Text
-  isActive  Boolean          @default(true)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  content   String             @db.Text
+  isActive  Boolean            @default(true)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  company   Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   documents EmployeeDocument[]
 
   @@index([companyId])
@@ -1007,17 +1117,17 @@ model Asset {
 }
 
 model Announcement {
-  id               String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId        String                          @db.Uuid
-  title            String                          @db.VarChar(200)
-  body             String                          @db.Text
-  priority         Priority                        @default(NORMAL)
+  id               String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String                        @db.Uuid
+  title            String                        @db.VarChar(200)
+  body             String                        @db.Text
+  priority         Priority                      @default(NORMAL)
   targetAudience   Json?
   publishAt        DateTime
   expiresAt        DateTime?
-  createdById      String                          @db.Uuid
-  createdAt        DateTime                        @default(now())
-  company          Company                         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdById      String                        @db.Uuid
+  createdAt        DateTime                      @default(now())
+  company          Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   acknowledgements AnnouncementAcknowledgement[]
 
   @@index([companyId])
@@ -1053,20 +1163,20 @@ model PerformanceCycle {
 }
 
 model PerformanceReview {
-  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId    String            @db.Uuid
-  cycleId      String            @db.Uuid
-  revieweeId   String            @db.Uuid
-  reviewerId   String            @db.Uuid
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String           @db.Uuid
+  cycleId      String           @db.Uuid
+  revieweeId   String           @db.Uuid
+  reviewerId   String           @db.Uuid
   type         ReviewType
-  status       ReviewStatus      @default(PENDING)
-  overallScore Decimal?          @db.Decimal(4, 2)
+  status       ReviewStatus     @default(PENDING)
+  overallScore Decimal?         @db.Decimal(4, 2)
   submittedAt  DateTime?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  cycle        PerformanceCycle  @relation(fields: [cycleId], references: [id])
-  reviewee     Employee          @relation("Reviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
-  reviewer     Employee          @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  cycle        PerformanceCycle @relation(fields: [cycleId], references: [id])
+  reviewee     Employee         @relation("Reviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
+  reviewer     Employee         @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
   answers      ReviewAnswer[]
 
   @@unique([cycleId, revieweeId, reviewerId, type])
@@ -1077,29 +1187,29 @@ model PerformanceReview {
 }
 
 model ReviewAnswer {
-  id         String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reviewId   String             @db.Uuid
-  questionId String             @db.Uuid
-  score      Decimal?           @db.Decimal(4, 2)
-  comment    String?            @db.Text
-  review     PerformanceReview  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId   String            @db.Uuid
+  questionId String            @db.Uuid
+  score      Decimal?          @db.Decimal(4, 2)
+  comment    String?           @db.Text
+  review     PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
   @@index([reviewId])
   @@map("review_answers")
 }
 
 model Goal {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId   String      @db.Uuid
-  employeeId  String      @db.Uuid
-  title       String      @db.VarChar(200)
-  description String?     @db.Text
-  dueDate     DateTime?   @db.Date
-  status      GoalStatus  @default(IN_PROGRESS)
-  progress    Int         @default(0)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  employee    Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String     @db.Uuid
+  employeeId  String     @db.Uuid
+  title       String     @db.VarChar(200)
+  description String?    @db.Text
+  dueDate     DateTime?  @db.Date
+  status      GoalStatus @default(IN_PROGRESS)
+  progress    Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  employee    Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([employeeId])
@@ -1186,20 +1296,20 @@ model JobPosting {
 }
 
 model Project {
-  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId   String        @db.Uuid
-  name        String        @db.VarChar(200)
-  code        String        @db.VarChar(20)
-  description String?       @db.Text
-  status      ProjectStatus @default(ACTIVE)
-  startDate   DateTime?     @db.Date
-  endDate     DateTime?     @db.Date
-  budget      Decimal?      @db.Decimal(15, 2)
-  managerId   String?       @db.Uuid
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String          @db.Uuid
+  name        String          @db.VarChar(200)
+  code        String          @db.VarChar(20)
+  description String?         @db.Text
+  status      ProjectStatus   @default(ACTIVE)
+  startDate   DateTime?       @db.Date
+  endDate     DateTime?       @db.Date
+  budget      Decimal?        @db.Decimal(15, 2)
+  managerId   String?         @db.Uuid
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
   deletedAt   DateTime?
-  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company     Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   members     ProjectMember[]
 
   @@unique([companyId, code])
@@ -1328,6 +1438,27 @@ model JobApplication {
   @@map("job_applications")
 }
 
+model BulkImportJob {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String           @db.Uuid
+  type           BulkImportType
+  status         BulkImportStatus @default(PENDING)
+  totalRows      Int              @default(0)
+  successfulRows Int              @default(0)
+  failedRows     Int              @default(0)
+  errors         Json?
+  createdById    String?          @db.Uuid
+  createdAt      DateTime         @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bulk_import_jobs")
+}
+
 enum SubscriptionTier {
   STARTER
   GROWTH
@@ -1366,6 +1497,32 @@ enum EmployeeStatus {
   INACTIVE
   ON_LEAVE
   TERMINATED
+}
+
+enum EmploymentHistoryType {
+  HIRED
+  PROMOTED
+  TRANSFERRED
+  TERMINATED
+  UPDATED
+}
+
+enum AddressType {
+  HOME
+  MAILING
+  WORK
+  OTHER
+}
+
+enum BulkImportType {
+  EMPLOYEES
+}
+
+enum BulkImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
 }
 
 enum SalaryComponentType {
