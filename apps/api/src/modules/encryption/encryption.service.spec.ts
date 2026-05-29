@@ -3,6 +3,7 @@ import { EncryptionService } from './encryption.service';
 import type { AppConfigService } from '../../config/config.service';
 
 const key = Buffer.from('12345678901234567890123456789012').toString('base64');
+const wrongKey = Buffer.from('abcdefghijklmnopqrstuvwxyz123456').toString('base64');
 
 function service() {
   return new EncryptionService({
@@ -24,6 +25,16 @@ describe('EncryptionService', () => {
     expect(encryption.decrypt(encrypted)).toBe('4111111111111111');
   });
 
+  it('does not expose plaintext in ciphertext or serialized payload', () => {
+    const encryption = service();
+    const plaintext = 'sensitive-account-number';
+    const encrypted = encryption.encrypt(plaintext);
+
+    expect(encrypted?.ciphertext).toBeTruthy();
+    expect(encrypted?.ciphertext).not.toBe(plaintext);
+    expect(JSON.stringify(encrypted)).not.toContain(plaintext);
+  });
+
   it('uses a unique iv for each encryption', () => {
     const encryption = service();
     const first = encryption.encrypt('secret');
@@ -37,5 +48,20 @@ describe('EncryptionService', () => {
     expect(() => new EncryptionService({
       get: () => ({ key: 'too-short' }),
     } as unknown as AppConfigService)).toThrow(/ENCRYPTION_KEY/);
+  });
+
+  it('fails safely when decrypting with the wrong key', () => {
+    const plaintext = '4111111111111111';
+    const encrypted = service().encrypt(plaintext);
+    const wrongKeyService = new EncryptionService({
+      get: () => ({ key: wrongKey }),
+    } as unknown as AppConfigService);
+
+    expect(() => wrongKeyService.decrypt(encrypted)).toThrow();
+    try {
+      wrongKeyService.decrypt(encrypted);
+    } catch (err) {
+      expect(String(err)).not.toContain(plaintext);
+    }
   });
 });

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@hr/prisma';
-import { ConflictError, NotFoundError } from '@hr/shared';
+import { ConflictError, NotFoundError, ValidationError } from '@hr/shared';
 import type { Prisma } from '@prisma/client';
 import type { RequestContext } from '../../common/context/request-context';
 import { AuditService } from '../audit/audit.service';
@@ -92,7 +92,7 @@ export class EmployeesService {
       companyId: user.companyId,
       entityType: 'employee',
       entityId: employee.id,
-      action: 'hire',
+      action: 'EMPLOYEE_HIRED',
       newValue: this.auditEmployee(employee),
     });
     this.events.emit(EMPLOYEE_HIRED, {
@@ -113,7 +113,7 @@ export class EmployeesService {
       companyId: user.companyId,
       entityType: 'employee',
       entityId: id,
-      action: 'update',
+      action: 'EMPLOYEE_UPDATED',
       oldValue: this.auditEmployee(oldValue),
       newValue: this.auditEmployee(updated),
     });
@@ -122,6 +122,8 @@ export class EmployeesService {
 
   async promoteEmployee(user: RequestContext, id: string, dto: PromoteEmployeeDto) {
     const oldValue = await this.getOrThrow(user.companyId, id);
+    await this.assertJobTitleExists(user.companyId, dto.jobTitleId);
+    if (dto.payGradeId) await this.assertPayGradeExists(user.companyId, dto.payGradeId);
     const updated = await this.prisma.unscopedClient.$transaction(async (tx) => {
       const employee = await tx.employee.update({
         where: { id },
@@ -149,9 +151,12 @@ export class EmployeesService {
       companyId: user.companyId,
       entityType: 'employee',
       entityId: id,
-      action: 'promote',
+      action: 'EMPLOYEE_PROMOTED',
       oldValue: this.auditEmployee(oldValue),
-      newValue: this.auditEmployee(updated),
+      newValue: {
+        ...this.auditEmployee(updated),
+        effectiveDate: dto.effectiveDate.toISOString(),
+      },
     });
     this.events.emit(EMPLOYEE_PROMOTED, this.lifecyclePayload(user, id, dto.effectiveDate));
     return this.get(user, id);
@@ -190,7 +195,7 @@ export class EmployeesService {
       companyId: user.companyId,
       entityType: 'employee',
       entityId: id,
-      action: 'transfer',
+      action: 'EMPLOYEE_TRANSFERRED',
       oldValue: this.auditEmployee(oldValue),
       newValue: this.auditEmployee(updated),
     });
@@ -200,6 +205,9 @@ export class EmployeesService {
 
   async terminateEmployee(user: RequestContext, id: string, dto: TerminateEmployeeDto) {
     const oldValue = await this.getOrThrow(user.companyId, id);
+    if (oldValue.status === 'TERMINATED') {
+      throw new ConflictError('Employee is already terminated');
+    }
     const updated = await this.prisma.unscopedClient.$transaction(async (tx) => {
       const employee = await tx.employee.update({
         where: { id },
@@ -232,7 +240,7 @@ export class EmployeesService {
       companyId: user.companyId,
       entityType: 'employee',
       entityId: id,
-      action: 'terminate',
+      action: 'EMPLOYEE_TERMINATED',
       oldValue: this.auditEmployee(oldValue),
       newValue: this.auditEmployee(updated),
     });
@@ -248,7 +256,7 @@ export class EmployeesService {
       companyId: user.companyId,
       entityType: 'employee',
       entityId: id,
-      action: 'soft_delete',
+      action: 'EMPLOYEE_DELETED',
       oldValue: this.auditEmployee(oldValue),
       newValue: this.auditEmployee(removed),
     });
@@ -426,6 +434,20 @@ export class EmployeesService {
       },
     });
     if (existing) throw new ConflictError('Employee number or email already exists');
+  }
+
+  private async assertJobTitleExists(companyId: string, jobTitleId: string): Promise<void> {
+    const jobTitle = await this.prisma.unscopedClient.jobTitle.findFirst({
+      where: { id: jobTitleId, companyId, deletedAt: null },
+    });
+    if (!jobTitle) throw new ValidationError('Job title not found');
+  }
+
+  private async assertPayGradeExists(companyId: string, payGradeId: string): Promise<void> {
+    const payGrade = await this.prisma.unscopedClient.payGrade.findFirst({
+      where: { id: payGradeId, companyId, deletedAt: null },
+    });
+    if (!payGrade) throw new ValidationError('Pay grade not found');
   }
 
   private async generateEmployeeNumber(companyId: string): Promise<string> {
