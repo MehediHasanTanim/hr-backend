@@ -26,7 +26,34 @@ describe('AUTH-003 - Refresh token rotation', () => {
       .expect(200);
 
     expect(res.body.data.accessToken).toEqual(expect.any(String));
+    expect(res.body.data.refreshToken).toBeUndefined();
     expect(res.headers['set-cookie']).toBeDefined();
+    expect(await redisKeys(`auth:refresh:${oldHash}`)).toHaveLength(0);
+  });
+
+  it('rotates a refresh token supplied in the request body for mobile clients', async () => {
+    const seed = suite.getSeed();
+    const login = await getRequest()
+      .post('/api/v1/auth/login')
+      .set('x-client-type', 'mobile')
+      .send({ email: seed.adminEmail, password: 'ValidPass@123' })
+      .expect(200);
+
+    const accessToken = login.body.data.accessToken as string;
+    const refreshToken = login.body.data.refreshToken as string;
+    const oldHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    expect(await redisKeys(`auth:refresh:${oldHash}`)).toHaveLength(1);
+
+    const res = await getRequest()
+      .post('/api/v1/auth/refresh')
+      .set('Authorization', bearer(accessToken))
+      .send({ refreshToken })
+      .expect(200);
+
+    expect(res.body.data).toMatchObject({
+      accessToken: expect.any(String),
+      refreshToken: expect.any(String),
+    });
     expect(await redisKeys(`auth:refresh:${oldHash}`)).toHaveLength(0);
   });
 

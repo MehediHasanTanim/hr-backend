@@ -20,6 +20,9 @@ import { PayrollModule } from './modules/payroll/payroll.module';
 import { LeaveModule } from './modules/leave/leave.module';
 import { ComplianceModule } from './modules/compliance/compliance.module';
 import { OrgModule } from './modules/org/org.module';
+import { HolidayModule } from './modules/holiday/holiday.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { BulkImportModule } from './modules/bulk-import/bulk-import.module';
 
 @Module({
@@ -50,7 +53,10 @@ import { BulkImportModule } from './modules/bulk-import/bulk-import.module';
     UsersModule,
     EmployeesModule,
     PayrollModule,
+    HolidayModule,
     LeaveModule,
+    AttendanceModule,
+    SchedulerModule,
     ComplianceModule,
     OrgModule,
     BulkImportModule,

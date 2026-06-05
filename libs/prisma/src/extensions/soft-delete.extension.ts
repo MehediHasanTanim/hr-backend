@@ -25,6 +25,7 @@ export const softDeleteExtension = Prisma.defineExtension({
         });
       },
 
+
       async deleteMany({ model, args, query }) {
         if (!SOFT_DELETABLE.has(model as never)) return query(args);
 

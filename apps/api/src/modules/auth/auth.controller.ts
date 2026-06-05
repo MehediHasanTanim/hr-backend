@@ -11,7 +11,9 @@ import { ForgotPasswordBody, type ForgotPasswordDto } from './dto/forgot-passwor
 import { LoginBody, type LoginDto } from './dto/login.dto';
 import { RegisterBody, type RegisterDto } from './dto/register.dto';
 import { AcceptInviteBody, type AcceptInviteDto, ResetPasswordBody, type ResetPasswordDto } from './dto/reset-password.dto';
-import { VerifyEmailBody, type VerifyEmailDto } from './dto/refresh.dto';
+import { RefreshBody, type RefreshDto, VerifyEmailBody, type VerifyEmailDto } from './dto/refresh.dto';
+import type { LoginResult, LoginWithRefreshResult } from './auth.types';
+import { isMobileAuthClient } from './auth-client';
 
 @Controller('auth')
 @Throttle({ default: { ttl: 60_000, limit: 10 } })
@@ -36,29 +38,32 @@ export class AuthController {
   @Throttle({ default: { ttl: 900_000, limit: 10 } })
   async login(
     @Body() dto: LoginBody,
+    @Req() req: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const result = await this.authService.login(dto as LoginDto);
     if ('mfaRequired' in result) return result;
     this.tokenService.setRefreshTokenCookie(reply, result.refreshToken);
-    return { accessToken: result.accessToken };
+    return this.authResponse(result, isMobileAuthClient(req));
   }
 
   @Post('refresh')
   @Public()
   @HttpCode(200)
   async refresh(
+    @Body() dto: RefreshBody,
     @Req() req: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ): Promise<{ accessToken: string }> {
+  ): Promise<LoginResult | LoginWithRefreshResult> {
     const cookies = req.cookies as Record<string, string | undefined> | undefined;
-    const rawToken = cookies?.['__Secure-rt'];
+    const bodyRefreshToken = (dto as RefreshDto)?.refreshToken;
+    const rawToken = bodyRefreshToken ?? cookies?.['__Secure-rt'];
     if (!rawToken) throw new UnauthorizedError('No refresh token');
 
     const sessionId = this.authService.extractSessionIdFromExpiredToken(req.headers.authorization);
-    const { accessToken, refreshToken } = await this.tokenService.rotateRefreshToken(rawToken, sessionId);
-    this.tokenService.setRefreshTokenCookie(reply, refreshToken);
-    return { accessToken };
+    const result = await this.tokenService.rotateRefreshToken(rawToken, sessionId);
+    this.tokenService.setRefreshTokenCookie(reply, result.refreshToken);
+    return this.authResponse(result, Boolean(bodyRefreshToken) || isMobileAuthClient(req));
   }
 
   @Get('me')
@@ -99,11 +104,12 @@ export class AuthController {
   @HttpCode(200)
   async acceptInvite(
     @Body() dto: AcceptInviteBody,
+    @Req() req: FastifyRequest,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    const { accessToken, refreshToken } = await this.authService.acceptInvite(dto as AcceptInviteDto);
-    this.tokenService.setRefreshTokenCookie(reply, refreshToken);
-    return { accessToken };
+    const result = await this.authService.acceptInvite(dto as AcceptInviteDto);
+    this.tokenService.setRefreshTokenCookie(reply, result.refreshToken);
+    return this.authResponse(result, isMobileAuthClient(req));
   }
 
   @Post('logout')
@@ -114,5 +120,13 @@ export class AuthController {
   ): Promise<void> {
     await this.tokenService.revokeSession(user.sessionId);
     this.tokenService.clearRefreshTokenCookie(reply);
+  }
+
+  private authResponse(
+    result: LoginWithRefreshResult,
+    includeRefreshToken: boolean,
+  ): LoginResult | LoginWithRefreshResult {
+    if (includeRefreshToken) return result;
+    return { accessToken: result.accessToken };
   }
 }

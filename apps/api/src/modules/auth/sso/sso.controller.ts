@@ -10,6 +10,7 @@ import { Public } from '../decorators/public.decorator';
 import type { SsoProfile } from '../auth.types';
 import { AuthService } from '../auth.service';
 import { TokenService } from '../token.service';
+import { isMobileClientValue } from '../auth-client';
 
 @Controller('auth/sso')
 export class SsoController {
@@ -22,12 +23,20 @@ export class SsoController {
 
   @Get(':provider')
   @Public()
-  async redirect(@Param('provider') provider: string, @Res() reply: FastifyReply): Promise<void> {
+  async redirect(
+    @Param('provider') provider: string,
+    @Query('client') client: string | undefined,
+    @Res() reply: FastifyReply,
+  ): Promise<void> {
     if (provider !== 'google') throw new UnauthorizedError('Unsupported SSO provider');
     const sso = this.config.get('sso');
     const app = this.config.get('app');
     const state = crypto.randomBytes(16).toString('hex');
-    await this.redis.set(RedisKeys.ssoState(state), '1', 600);
+    await this.redis.set(
+      RedisKeys.ssoState(state),
+      JSON.stringify({ client: isMobileClientValue(client) ? 'mobile' : 'web' }),
+      600,
+    );
 
     const params = new URLSearchParams({
       client_id: sso.google.clientId ?? '',
@@ -47,15 +56,29 @@ export class SsoController {
     @Res() reply: FastifyReply,
     @Query('state') state: string,
   ): Promise<void> {
-    const valid = state ? await this.redis.exists(RedisKeys.ssoState(state)) : false;
-    if (!valid) throw new UnauthorizedError('Invalid SSO state');
-    await this.redis.del(RedisKeys.ssoState(state));
+    const stateKey = RedisKeys.ssoState(state);
+    const rawState = state ? await this.redis.get(stateKey) : null;
+    if (!rawState) throw new UnauthorizedError('Invalid SSO state');
+    await this.redis.del(stateKey);
 
     const profile = req.user;
     if (!profile) throw new UnauthorizedError('SSO profile unavailable');
     const { accessToken, refreshToken } = await this.authService.loginWithSsoProfile(profile);
     this.tokenService.setRefreshTokenCookie(reply, refreshToken);
     const baseUrl = this.config.get('app').webBaseUrl ?? '';
-    void reply.redirect(`${baseUrl}/sso/callback#accessToken=${encodeURIComponent(accessToken)}`);
+    const fragment = new URLSearchParams({ accessToken });
+    if (this.isMobileSsoState(rawState)) {
+      fragment.set('refreshToken', refreshToken);
+    }
+    void reply.redirect(`${baseUrl}/sso/callback#${fragment.toString()}`);
+  }
+
+  private isMobileSsoState(rawState: string): boolean {
+    try {
+      const parsed = JSON.parse(rawState) as { client?: string };
+      return parsed.client === 'mobile';
+    } catch {
+      return false;
+    }
   }
 }

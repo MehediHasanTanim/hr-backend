@@ -25,6 +25,9 @@ export default defineConfig({
         'apps/api/src/modules/auth/guards/jwt-auth.guard.ts',
         'apps/api/src/modules/auth/guards/permissions.guard.ts',
         'apps/api/src/modules/auth/interceptors/audit.interceptor.ts',
+        'apps/api/src/modules/leave/services/leave-accrual.engine.ts',
+        'apps/api/src/modules/leave/services/leave-request.service.ts',
+        'apps/api/src/modules/attendance/services/attendance.service.ts',
         'libs/prisma/src/extensions/tenant-scope.extension.ts',
       ],
       exclude: [

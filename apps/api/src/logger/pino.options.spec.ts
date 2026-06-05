@@ -5,7 +5,26 @@ function config(nodeEnv: 'development' | 'production') {
   return {
     get: (key: 'app' | 'log') => {
       if (key === 'app') return { nodeEnv };
-      return { level: 'debug' };
+      return {
+        level: 'debug',
+        fileEnabled: false,
+        filePath: 'logs/test-api.log',
+        fileLevel: undefined,
+      };
+    },
+  };
+}
+
+function fileConfig(nodeEnv: 'development' | 'production') {
+  return {
+    get: (key: 'app' | 'log') => {
+      if (key === 'app') return { nodeEnv };
+      return {
+        level: 'debug',
+        fileEnabled: true,
+        filePath: 'logs/test-api.log',
+        fileLevel: 'info',
+      };
     },
   };
 }
@@ -19,6 +38,16 @@ describe('buildPinoOptions', () => {
   it('has no transport in production', () => {
     const options = buildPinoOptions(config('production') as never);
     expect(options.pinoHttp?.transport).toBeUndefined();
+  });
+
+  it('adds stdout and file transport targets when file logging is enabled', () => {
+    const options = buildPinoOptions(fileConfig('production') as never);
+    expect(options.pinoHttp?.transport?.targets).toHaveLength(2);
+    expect(options.pinoHttp?.transport?.targets?.[1]).toMatchObject({
+      target: 'pino/file',
+      level: 'info',
+      options: { destination: 'logs/test-api.log', mkdir: true },
+    });
   });
 
   it('sets level from config', () => {

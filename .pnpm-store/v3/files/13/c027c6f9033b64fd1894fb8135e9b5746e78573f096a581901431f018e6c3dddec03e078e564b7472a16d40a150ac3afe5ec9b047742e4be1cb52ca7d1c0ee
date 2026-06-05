@@ -1,0 +1,133 @@
+{
+  "name": "nestjs-throttler-storage-redis",
+  "version": "0.5.1",
+  "description": "Redis storage provider for the @nestjs/throttler package",
+  "author": "Kim 金可明 <koomen@pm.me>",
+  "keywords": [
+    "nestjs",
+    "rate-limit",
+    "throttle",
+    "express",
+    "fastify",
+    "redis"
+  ],
+  "private": false,
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "prepare": "husky install",
+    "prebuild": "rimraf dist",
+    "preversion": "yarn run format && yarn run lint && git add -A && yarn build",
+    "build": "nest build",
+    "commit": "git-cz",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start:dev": "nodemon --watch '{src,test/app}/**/*.ts' --ignore '**/*.spec.ts' --exec 'ts-node' test/app/main.ts",
+    "lint": "eslint \"{src,apps,dist,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --config test/jest-e2e.json --runInBand",
+    "test:e2e:dev": "yarn test:e2e --watchAll",
+    "version": "conventional-changelog -p angular -i CHANGELOG.md -s && git add CHANGELOG.md"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.7.1",
+    "@commitlint/config-conventional": "^17.7.0",
+    "@nestjs/cli": ">=10.1.17",
+    "@nestjs/common": ">=10.2.4",
+    "@nestjs/core": ">=10.2.4",
+    "@nestjs/graphql": ">=12.0.8",
+    "@nestjs/platform-express": ">=10.2.4",
+    "@nestjs/platform-fastify": ">=10.2.4",
+    "@nestjs/platform-socket.io": ">=10.2.4",
+    "@nestjs/platform-ws": ">=10.2.4",
+    "@nestjs/schematics": ">=10.0.2",
+    "@nestjs/testing": ">=10.2.4",
+    "@nestjs/throttler": "^6.0.0",
+    "@nestjs/websockets": ">=10.2.4",
+    "@types/express": "^4.17.17",
+    "@types/jest": "29.5.12",
+    "@types/node": "^20.6.0",
+    "@types/socket.io-client": "^3.0.0",
+    "@types/supertest": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^6.6.0",
+    "apollo-server-express": "^2.25.1",
+    "conventional-changelog-cli": "^4.1.0",
+    "cz-conventional-changelog": "^3.3.0",
+    "eslint": "^8.49.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "husky": "^8.0.3",
+    "ioredis": "^5.3.2",
+    "jest": "^29.6.4",
+    "lint-staged": "^14.0.1",
+    "nodemon": "^3.0.1",
+    "prettier": "^3.0.3",
+    "reflect-metadata": "^0.2.1",
+    "rimraf": "^5.0.1",
+    "rxjs": "^7.8.1",
+    "socket.io-client": "^4.7.2",
+    "supertest": "^7.0.0",
+    "ts-jest": "29.2.3",
+    "ts-loader": "^9.4.4",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.2.2"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0",
+    "@nestjs/core": "^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0",
+    "@nestjs/throttler": ">=6.0.0",
+    "ioredis": ">=5.0.0",
+    "reflect-metadata": "^0.2.1"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".spec.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write",
+      "eslint --ext ts"
+    ],
+    "*.{md,html,json,js}": [
+      "prettier --write"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kkoomen/nestjs-throttler-storage-redis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kkoomen/nestjs-throttler-storage-redis/issues"
+  },
+  "homepage": "https://github.com/kkoomen/nestjs-throttler-storage-redis#readme"
+}

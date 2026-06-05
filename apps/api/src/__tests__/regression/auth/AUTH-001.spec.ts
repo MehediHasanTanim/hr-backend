@@ -17,6 +17,7 @@ describe('AUTH-001 - Successful login with valid credentials', () => {
     expect(res.body).toMatchObject({
       data: expect.objectContaining({ accessToken: expect.any(String) }),
     });
+    expect(res.body.data.refreshToken).toBeUndefined();
     const cookie = (res.headers['set-cookie'] as string[]).find((value) => value.includes('__Secure-rt'));
     expect(cookie).toMatch(/HttpOnly/i);
     expect(cookie).toMatch(/SameSite=Strict/i);
@@ -28,6 +29,20 @@ describe('AUTH-001 - Successful login with valid credentials', () => {
     expect(payload.companyId).toBe(seed.companyId);
     expect(Array.isArray(payload.roles)).toBe(true);
     expect(payload.exp - payload.iat).toBe(900);
+  });
+
+  it('returns refresh token in the response body for mobile clients', async () => {
+    const seed = suite.getSeed();
+    const res = await getRequest()
+      .post('/api/v1/auth/login')
+      .set('x-client-type', 'mobile')
+      .send({ email: seed.adminEmail, password: 'ValidPass@123' })
+      .expect(200);
+
+    expect(res.body.data).toMatchObject({
+      accessToken: expect.any(String),
+      refreshToken: expect.any(String),
+    });
   });
 
   it('updates last login and allows authenticated /auth/me', async () => {

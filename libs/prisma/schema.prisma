@@ -39,7 +39,7 @@ model Company {
   notifications        Notification[]
   companySettings      CompanySetting[]
   documentTemplates    DocumentTemplate[]
-  holidays             Holiday[]
+  holidayCalendars     HolidayCalendar[]
   shifts               Shift[]
   locations            Location[]
   announcements        Announcement[]
@@ -52,6 +52,7 @@ model Company {
   payGrades            PayGrade[]
   bulkImportJobs       BulkImportJob[]
   salaryRevisions      SalaryRevision[]
+  accrualRunLogs       AccrualRunLog[]
   payrollRuns          PayrollRun[]
   taxBrackets          TaxBracket[]
   shiftAssignments     ShiftAssignment[]
@@ -197,7 +198,7 @@ model Employee {
   addresses                  EmployeeAddress[]
   roles                      EmployeeRole[]
   salaryRevisions            SalaryRevision[]
-  leaveAllocations           LeaveAllocation[]
+  leaveBalances              LeaveBalance[]
   leaveRequests              LeaveRequest[]
   attendanceLogs             AttendanceLog[]
   payslips                   Payslip[]
@@ -213,6 +214,7 @@ model Employee {
   trainings                  EmployeeTraining[]
   announcements              AnnouncementAcknowledgement[]
   projectMemberships         ProjectMember[]
+  correctedAttendances      AttendanceLog[]          @relation("CorrectedAttendance")
 
   @@unique([companyId, employeeNumber])
   @@unique([companyId, workEmail])
@@ -658,47 +660,58 @@ model Expense {
 }
 
 model LeaveType {
-  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId        String            @db.Uuid
-  name             String            @db.VarChar(100)
-  code             String            @db.VarChar(20)
-  isPaid           Boolean           @default(true)
-  allowHalfDay     Boolean           @default(true)
-  requiresApproval Boolean           @default(true)
-  carryForward     Boolean           @default(false)
-  maxCarryForward  Int?
-  accrualPolicy    Json?
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  allocations      LeaveAllocation[]
-  requests         LeaveRequest[]
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String            @db.Uuid
+  name            String            @db.VarChar(100)
+  code            String            @db.VarChar(20)
+  accrualType     AccrualType       @default(NONE)
+  accrualAmount   Decimal           @default(0) @db.Decimal(5, 2)
+  maxCarryForward Decimal           @default(0) @db.Decimal(5, 2)
+  maxBalance      Decimal           @default(0) @db.Decimal(5, 2)
+  isPaid          Boolean           @default(true)
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  balances        LeaveBalance[]
+  requests        LeaveRequest[]
 
   @@unique([companyId, code])
   @@index([companyId])
   @@map("leave_types")
 }
 
-model LeaveAllocation {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId   String    @db.Uuid
-  employeeId  String    @db.Uuid
-  leaveTypeId String    @db.Uuid
-  year        Int
-  totalDays   Decimal   @db.Decimal(6, 1)
-  usedDays    Decimal   @default(0) @db.Decimal(6, 1)
-  carriedOver Decimal   @default(0) @db.Decimal(6, 1)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+model LeaveBalance {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId    String    @db.Uuid
+  leaveTypeId   String    @db.Uuid
+  year          Int
+  entitled      Decimal   @default(0) @db.Decimal(6, 2)
+  used          Decimal   @default(0) @db.Decimal(6, 2)
+  carriedForward Decimal  @default(0) @db.Decimal(6, 2)
+  balance       Decimal   @default(0) @db.Decimal(6, 2)
+  updatedAt     DateTime  @updatedAt
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType     LeaveType @relation(fields: [leaveTypeId], references: [id])
 
   @@unique([employeeId, leaveTypeId, year])
-  @@index([companyId])
   @@index([employeeId])
   @@index([leaveTypeId])
-  @@map("leave_allocations")
+  @@map("leave_balances")
+}
+
+model AccrualRunLog {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String    @db.Uuid
+  month           Int
+  year            Int
+  processedAt     DateTime  @default(now())
+  employeesCount  Int       @default(0)
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, month, year])
+  @@index([companyId])
+  @@map("accrual_run_logs")
 }
 
 model LeaveRequest {
@@ -746,18 +759,32 @@ model LeaveApprovalStep {
   @@map("leave_approval_steps")
 }
 
-model Holiday {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId   String      @db.Uuid
-  name        String      @db.VarChar(100)
-  date        DateTime    @db.Date
-  type        HolidayType @default(PUBLIC)
-  country     String?     @db.Char(2)
-  isRecurring Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+model HolidayCalendar {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String    @db.Uuid
+  name      String    @db.VarChar(255)
+  year      Int
+  isDefault Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  holidays  Holiday[]
 
-  @@index([companyId, date])
+  @@unique([companyId, year, name])
+  @@index([companyId, year])
+  @@map("holiday_calendars")
+}
+
+model Holiday {
+  id         String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  calendarId String          @db.Uuid
+  name       String          @db.VarChar(100)
+  date       DateTime        @db.Date
+  type       HolidayType     @default(PUBLIC)
+  createdAt  DateTime        @default(now())
+  calendar   HolidayCalendar @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  @@index([calendarId, date])
   @@map("holidays")
 }
 
@@ -815,25 +842,33 @@ model AttendanceSetting {
 }
 
 model AttendanceLog {
-  id              String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId       String                 @db.Uuid
-  employeeId      String                 @db.Uuid
-  date            DateTime               @db.Date
-  checkInAt       DateTime?
-  checkOutAt      DateTime?
-  workedMinutes   Int?
-  overtimeMinutes Int?
-  status          AttendanceStatus       @default(PRESENT)
-  checkInLat      Decimal?               @db.Decimal(9, 6)
-  checkInLng      Decimal?               @db.Decimal(9, 6)
-  checkOutLat     Decimal?               @db.Decimal(9, 6)
-  checkOutLng     Decimal?               @db.Decimal(9, 6)
-  deviceId        String?                @db.VarChar(100)
-  notes           String?                @db.Text
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
-  employee        Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  corrections     AttendanceCorrection[]
+  id               String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String                 @db.Uuid
+  employeeId       String                 @db.Uuid
+  date             DateTime               @db.Date
+  checkInAt        DateTime?
+  checkOutAt       DateTime?
+  source           AttendanceSource?      @default(WEB)
+  ipAddress        String?                @db.VarChar(50)
+  coordinates      Json?
+  workedMinutes    Int?
+  overtimeMinutes  Int?
+  status           AttendanceStatus       @default(PRESENT)
+  checkInLat       Decimal?               @db.Decimal(9, 6)
+  checkInLng       Decimal?               @db.Decimal(9, 6)
+  checkOutLat      Decimal?               @db.Decimal(9, 6)
+  checkOutLng      Decimal?               @db.Decimal(9, 6)
+  deviceId         String?                @db.VarChar(100)
+  notes            String?                @db.Text
+  isCorrected      Boolean                @default(false)
+  correctionReason String?                @db.Text
+  correctedById    String?                @db.Uuid
+  correctedAt      DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  employee         Employee               @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  correctedBy      Employee?              @relation("CorrectedAttendance", fields: [correctedById], references: [id])
+  corrections      AttendanceCorrection[]
 
   @@unique([employeeId, date])
   @@index([companyId])
@@ -1586,6 +1621,19 @@ enum HolidayType {
   PUBLIC
   OPTIONAL
   COMPANY
+}
+
+enum AccrualType {
+  MONTHLY
+  ANNUAL
+  NONE
+}
+
+enum AttendanceSource {
+  WEB
+  MOBILE
+  BIOMETRIC
+  MANUAL
 }
 
 enum AttendanceStatus {
