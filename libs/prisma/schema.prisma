@@ -52,8 +52,11 @@ model Company {
   payGrades            PayGrade[]
   bulkImportJobs       BulkImportJob[]
   salaryRevisions      SalaryRevision[]
+  salaryStructures     SalaryStructure[]
+  employeeSalaries     EmployeeSalary[]
   accrualRunLogs       AccrualRunLog[]
   payrollRuns          PayrollRun[]
+  payrollCycles        PayrollCycle[]
   taxBrackets          TaxBracket[]
   shiftAssignments     ShiftAssignment[]
   overtimeRequests     OvertimeRequest[]
@@ -215,6 +218,9 @@ model Employee {
   announcements              AnnouncementAcknowledgement[]
   projectMemberships         ProjectMember[]
   correctedAttendances      AttendanceLog[]          @relation("CorrectedAttendance")
+  employeeSalaries          EmployeeSalary[]
+  bankDetails               EmployeeBankDetail[]
+  payrollEntries            PayrollEntry[]
 
   @@unique([companyId, employeeNumber])
   @@unique([companyId, workEmail])
@@ -477,9 +483,11 @@ model SalaryComponent {
   isActive      Boolean              @default(true)
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
-  company       Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company       Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
   revisionLines SalaryRevisionLine[]
   payslipLines  PayslipLine[]
+  structureLinks  SalaryStructureComponent[]
+  entryComponents PayrollEntryComponent[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -566,23 +574,30 @@ model Payslip {
   id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId   String        @db.Uuid
   employeeId  String        @db.Uuid
-  payPeriodId String        @db.Uuid
+  payPeriodId String?       @db.Uuid
+  cycleId     String?       @db.Uuid
+  entryId     String?       @db.Uuid
   grossAmount Decimal       @db.Decimal(15, 2)
   netAmount   Decimal       @db.Decimal(15, 2)
   taxAmount   Decimal       @db.Decimal(15, 2)
   status      PayslipStatus @default(DRAFT)
   publishedAt DateTime?
   pdfUrl      String?       @db.Text
+  s3Key       String?       @db.Text
+  s3Bucket    String?       @db.Text
+  generatedAt DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   employee    Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  payPeriod   PayPeriod     @relation(fields: [payPeriodId], references: [id])
+  payPeriod   PayPeriod?    @relation(fields: [payPeriodId], references: [id])
+  cycle       PayrollCycle? @relation(fields: [cycleId], references: [id])
   lines       PayslipLine[]
 
   @@unique([employeeId, payPeriodId])
   @@index([companyId])
   @@index([employeeId])
   @@index([payPeriodId])
+  @@index([cycleId])
   @@index([status])
   @@map("payslips")
 }
@@ -614,6 +629,161 @@ model TaxBracket {
 
   @@index([companyId, taxYear])
   @@map("tax_brackets")
+}
+
+// ===== Payroll Module - Sprint 4 =====
+
+model SalaryStructure {
+  id          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String                        @db.Uuid
+  name        String                        @db.VarChar(100)
+  description String?                       @db.Text
+  isActive    Boolean                       @default(true)
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
+  company     Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  components  SalaryStructureComponent[]
+  employees   EmployeeSalary[]
+  entries     PayrollEntry[]
+
+  @@index([companyId])
+  @@map("salary_structures")
+}
+
+model SalaryStructureComponent {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  structureId   String            @db.Uuid
+  componentId   String            @db.Uuid
+  sortOrder     Int               @default(0)
+  defaultValue  Decimal           @default(0) @db.Decimal(12, 2)
+  structure     SalaryStructure   @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  component     SalaryComponent   @relation(fields: [componentId], references: [id])
+
+  @@unique([structureId, componentId])
+  @@index([structureId])
+  @@index([componentId])
+  @@map("salary_structure_components")
+}
+
+model EmployeeSalary {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId    String          @db.Uuid
+  structureId   String          @db.Uuid
+  companyId     String          @db.Uuid
+  ctc           Decimal         @db.Decimal(14, 2)
+  effectiveFrom DateTime        @db.Date
+  effectiveTo   DateTime?       @db.Date
+  status        SalaryStatus    @default(DRAFT)
+  notes         String?         @db.Text
+  revisedById   String?         @db.Uuid
+  approvedById  String?         @db.Uuid
+  approvedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  employee      Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  structure     SalaryStructure @relation(fields: [structureId], references: [id])
+  company       Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, effectiveFrom])
+  @@index([companyId])
+  @@map("employee_salaries")
+}
+
+model EmployeeBankDetail {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId        String    @db.Uuid
+  accountHolderName String    @db.VarChar(150)
+  accountNumber     String    @db.VarChar(50)
+  ifscCode          String    @db.VarChar(20)
+  bankName          String    @db.VarChar(100)
+  branchName        String?   @db.VarChar(100)
+  isPrimary         Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  employee          Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("employee_bank_details")
+}
+
+model PayrollCycle {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String               @db.Uuid
+  month           Int
+  year            Int
+  status          PayrollCycleStatus   @default(DRAFT)
+  totalGross      Decimal              @default(0) @db.Decimal(14, 2)
+  totalDeductions Decimal              @default(0) @db.Decimal(14, 2)
+  totalNet        Decimal              @default(0) @db.Decimal(14, 2)
+  employeeCount   Int                  @default(0)
+  runAt           DateTime?
+  approvedAt      DateTime?
+  approvedById    String?              @db.Uuid
+  disbursedAt     DateTime?
+  disbursedById   String?              @db.Uuid
+  reversedAt      DateTime?
+  reversedById    String?              @db.Uuid
+  reversalReason  String?              @db.Text
+  createdById     String               @db.Uuid
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  company         Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  entries         PayrollEntry[]
+  payslips        Payslip[]
+
+  @@unique([companyId, month, year])
+  @@index([companyId])
+  @@index([status])
+  @@map("payroll_cycles")
+}
+
+model PayrollEntry {
+  id               String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cycleId          String                    @db.Uuid
+  employeeId       String                    @db.Uuid
+  structureId      String                    @db.Uuid
+  monthlyCtc       Decimal                   @db.Decimal(14, 2)
+  workingDays      Int
+  presentDays      Decimal                   @db.Decimal(6, 2)
+  lopDays          Decimal                   @db.Decimal(6, 2) @default(0)
+  grossEarnings    Decimal                   @db.Decimal(14, 2)
+  totalDeductions  Decimal                   @db.Decimal(14, 2)
+  netPayable       Decimal                   @db.Decimal(14, 2)
+  status           PayrollEntryStatus        @default(COMPUTED)
+  notes            String?                   @db.Text
+  payslipKey       String?                   @db.Text
+  payslipGeneratedAt DateTime?
+  payslipGenFailed Boolean                   @default(false)
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  cycle            PayrollCycle              @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  employee         Employee                  @relation(fields: [employeeId], references: [id])
+  structure        SalaryStructure           @relation(fields: [structureId], references: [id])
+  components       PayrollEntryComponent[]
+
+  @@unique([cycleId, employeeId])
+  @@index([cycleId])
+  @@index([employeeId])
+  @@index([status])
+  @@map("payroll_entries")
+}
+
+model PayrollEntryComponent {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entryId       String          @db.Uuid
+  componentId   String          @db.Uuid
+  componentCode String          @db.VarChar(30)
+  componentName String          @db.VarChar(100)
+  type          SalaryComponentType
+  amount        Decimal         @db.Decimal(12, 2)
+  createdAt     DateTime        @default(now())
+  entry         PayrollEntry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  component     SalaryComponent @relation(fields: [componentId], references: [id])
+
+  @@index([entryId])
+  @@index([componentId])
+  @@map("payroll_entry_components")
 }
 
 model ExpensePolicy {
@@ -1577,6 +1747,28 @@ enum PayPeriodStatus {
   PROCESSING
   CLOSED
   LOCKED
+}
+
+enum PayrollCycleStatus {
+  DRAFT
+  PROCESSING
+  COMPUTED
+  APPROVED
+  DISBURSED
+  REVERSED
+}
+
+enum PayrollEntryStatus {
+  COMPUTED
+  APPROVED
+  DISBURSED
+  HELD
+  REVERSED
+}
+
+enum SalaryStatus {
+  DRAFT
+  APPROVED
 }
 
 enum PayrollRunStatus {
