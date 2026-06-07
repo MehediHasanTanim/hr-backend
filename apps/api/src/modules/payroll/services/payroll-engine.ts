@@ -103,7 +103,7 @@ export class PayrollEngine {
     const presentDays = Math.max(0, workingDays - lopDays);
 
     // Step 3 — Compute component amounts
-    const sortedComponents = [...employeeSalary.structure.components].sort(
+    const sorted = [...employeeSalary.structure.components].sort(
       (a, b) => a.sortOrder - b.sortOrder,
     );
 
@@ -145,9 +145,11 @@ export class PayrollEngine {
             );
           }
           try {
+            const processedFormula = comp.formula.replace(/Math\.(\w+)/g, '$1');
             const parser = new Parser();
-            const expr = parser.parse(comp.formula);
-            const result = expr.evaluate({ ...context });
+            const expr = parser.parse(processedFormula);
+            const evalCtx = { ...context, Math, min: Math.min, max: Math.max, floor: Math.floor, round: Math.round, ceil: Math.ceil, abs: Math.abs };
+            const result = expr.evaluate(evalCtx);
             if (typeof result !== 'number' || !isFinite(result)) {
               throw new FormulaEvaluationError(
                 `Formula for ${comp.code} did not evaluate to a finite number`,

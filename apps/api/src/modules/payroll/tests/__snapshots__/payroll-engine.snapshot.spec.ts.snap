@@ -1,0 +1,61 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PayrollEngine — snapshot tests > standard structure with 3 LOP days (26 working days, 23 present) > netPayable matches snapshot with 3 LOP days 1`] = `
+{
+  "components": [
+    {
+      "amount": 44230.77,
+      "code": "BASIC",
+      "type": "earning",
+    },
+    {
+      "amount": 17692.31,
+      "code": "HRA",
+      "type": "earning",
+    },
+    {
+      "amount": 6192.31,
+      "code": "TDS",
+      "type": "deduction",
+    },
+    {
+      "amount": 1800,
+      "code": "PF",
+      "type": "deduction",
+    },
+  ],
+  "grossEarnings": 61923.08,
+  "netPayable": 53930.77,
+  "totalDeductions": 7992.31,
+}
+`;
+
+exports[`PayrollEngine — snapshot tests > standard structure, full month (26 working days, 0 LOP) > matches full component breakdown snapshot 1`] = `
+{
+  "components": [
+    {
+      "amount": 50000,
+      "code": "BASIC",
+      "type": "earning",
+    },
+    {
+      "amount": 20000,
+      "code": "HRA",
+      "type": "earning",
+    },
+    {
+      "amount": 7000,
+      "code": "TDS",
+      "type": "deduction",
+    },
+    {
+      "amount": 1800,
+      "code": "PF",
+      "type": "deduction",
+    },
+  ],
+  "grossEarnings": 70000,
+  "netPayable": 61200,
+  "totalDeductions": 8800,
+}
+`;
