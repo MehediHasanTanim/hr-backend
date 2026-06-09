@@ -16,6 +16,7 @@ import { PayrollEngine } from './services/payroll-engine';
 import { PayrollCycleService } from './services/payroll-cycle.service';
 import { BankFileService } from './services/bank-file.service';
 import { PayslipService } from './services/payslip.service';
+import { StorageService } from './services/storage.service';
 
 import { PayrollRunProcessor } from './processors/payroll-run.processor';
 import { PayslipGenProcessor } from './processors/payslip-gen.processor';
@@ -43,9 +44,10 @@ import { PayslipGenProcessor } from './processors/payslip-gen.processor';
     PayrollCycleService,
     BankFileService,
     PayslipService,
+    StorageService,
     PayrollRunProcessor,
     PayslipGenProcessor,
   ],
-  exports: [EmployeeSalaryService, PayrollEngine],
+  exports: [EmployeeSalaryService, PayrollEngine, StorageService],
 })
 export class PayrollModule {}

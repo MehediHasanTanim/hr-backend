@@ -344,4 +344,105 @@ describe('PayrollCycleService', () => {
       );
     });
   });
+
+  // ==================================================================
+  // State-Transition Matrix
+  // ==================================================================
+  describe('state-transition matrix — all valid and invalid transitions', () => {
+    // Define the transition table:
+    // [fromStatus, action, expectValid]
+    // Actions: 'run' | 'approve' | 'disburse' | 'reverse'
+    const TRANSITIONS: Array<{ from: string; action: string; valid: boolean }> = [
+      // runCycle valid transitions
+      { from: 'DRAFT', action: 'run', valid: true },
+      // runCycle invalid transitions
+      { from: 'PROCESSING', action: 'run', valid: false },
+      { from: 'COMPUTED', action: 'run', valid: false },
+      { from: 'APPROVED', action: 'run', valid: false },
+      { from: 'DISBURSED', action: 'run', valid: false },
+      { from: 'REVERSED', action: 'run', valid: false },
+      // approveCycle valid transitions
+      { from: 'COMPUTED', action: 'approve', valid: true },
+      // approveCycle invalid transitions
+      { from: 'DRAFT', action: 'approve', valid: false },
+      { from: 'PROCESSING', action: 'approve', valid: false },
+      { from: 'APPROVED', action: 'approve', valid: false },
+      { from: 'DISBURSED', action: 'approve', valid: false },
+      { from: 'REVERSED', action: 'approve', valid: false },
+      // disburseCycle valid transitions
+      { from: 'APPROVED', action: 'disburse', valid: true },
+      // disburseCycle invalid transitions
+      { from: 'DRAFT', action: 'disburse', valid: false },
+      { from: 'PROCESSING', action: 'disburse', valid: false },
+      { from: 'COMPUTED', action: 'disburse', valid: false },
+      { from: 'DISBURSED', action: 'disburse', valid: false },
+      { from: 'REVERSED', action: 'disburse', valid: false },
+      // reverseCycle valid transitions
+      { from: 'APPROVED', action: 'reverse', valid: true },
+      { from: 'DISBURSED', action: 'reverse', valid: true },
+      // reverseCycle invalid transitions
+      { from: 'DRAFT', action: 'reverse', valid: false },
+      { from: 'PROCESSING', action: 'reverse', valid: false },
+      { from: 'COMPUTED', action: 'reverse', valid: false },
+      { from: 'REVERSED', action: 'reverse', valid: false },
+    ];
+
+    const CYCLE_ID = 'cycle-1';
+
+    function createStateMock(status: string) {
+      const mocks = createMocks();
+      const actor = makeActor();
+      mocks.mockPrisma.unscopedClient.payrollCycle.findFirst.mockResolvedValue(
+        makeCycle({ status }),
+      );
+      // For approve, mock held entries count
+      if (status === 'COMPUTED') {
+        mocks.mockPrisma.unscopedClient.payrollEntry.count.mockResolvedValue(0);
+      }
+      // For disburse, mock entries
+      if (status === 'APPROVED') {
+        mocks.mockPrisma.unscopedClient.payrollEntry.findMany.mockResolvedValue([
+          { id: 'entry-1', employeeId: 'emp-1' },
+        ]);
+      }
+      return { ...mocks, actor };
+    }
+
+    for (const { from, action, valid } of TRANSITIONS) {
+      const testLabel = valid
+        ? `ALLOWED: ${from} → ${action}()`
+        : `BLOCKED: ${from} → ${action}() throws`;
+
+      it(testLabel, async () => {
+        const { service, mockRunQueue, mockPayslipQueue, actor } = createStateMock(from);
+
+        const runAction = async () => {
+          switch (action) {
+            case 'run':
+              return service.runCycle(CYCLE_ID, actor);
+            case 'approve':
+              return service.approveCycle(CYCLE_ID, actor);
+            case 'disburse':
+              return service.disburseCycle(CYCLE_ID, actor);
+            case 'reverse':
+              return service.reverseCycle(CYCLE_ID, actor, {
+                reversalReason: 'Testing state transition matrix for audit purposes',
+              });
+            default:
+              throw new Error(`Unknown action: ${action}`);
+          }
+        };
+
+        if (valid) {
+          const result = await runAction();
+          expect(result).toBeDefined();
+        } else {
+          await expect(runAction()).rejects.toThrow();
+          // Ensure no queue jobs were enqueued for invalid transitions
+          if (action === 'run') expect(mockRunQueue.add).not.toHaveBeenCalled();
+          if (action === 'disburse') expect(mockPayslipQueue.add).not.toHaveBeenCalled();
+        }
+      });
+    }
+  });
 });

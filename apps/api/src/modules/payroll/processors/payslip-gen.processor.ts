@@ -3,6 +3,7 @@ import { Inject, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '@hr/prisma';
 import { PAYSLIP_GEN_QUEUE } from '../constants/queues';
+import { StorageService } from '../services/storage.service';
 
 interface PayslipGenJobData {
   entryId: string;
@@ -16,6 +17,7 @@ export class PayslipGenProcessor extends WorkerHost {
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(StorageService) private readonly storage: StorageService,
   ) {
     super();
   }
@@ -53,122 +55,171 @@ export class PayslipGenProcessor extends WorkerHost {
       const deductions = entry.components.filter((c) => c.type === 'DEDUCTION');
       const totalEarnings = earnings.reduce((s, c) => s + Number(c.amount), 0);
       const totalDeductions = deductions.reduce((s, c) => s + Number(c.amount), 0);
+      const bank = entry.employee.bankDetails[0];
 
       const docDefinition: any = {
         content: [
-          { text: 'Payslip', style: 'header' },
-          { text: `${monthName} ${year}`, style: 'subheader' },
+          // Company Header
+          { text: 'PAYSLIP', style: 'companyHeader' },
+          { text: `${monthName} ${year}`, style: 'periodHeader' },
           { text: '\n' },
+          // Employee Info
           {
-            text: [
-              { text: 'Employee ID: ', bold: true },
-              `${entry.employeeId}\n`,
-            ],
+            table: {
+              widths: ['50%', '50%'],
+              body: [
+                [
+                  { text: [{ text: 'Employee ID: ', bold: true }, `${employeeId}`], alignment: 'left' },
+                  { text: [{ text: 'Status: ', bold: true }, 'Active'], alignment: 'right' },
+                ],
+                [
+                  { text: [{ text: 'Working Days: ', bold: true }, `${entry.workingDays}`], alignment: 'left' },
+                  { text: [{ text: 'Pay Days: ', bold: true }, `${entry.presentDays}`], alignment: 'right' },
+                ],
+                [
+                  { text: [{ text: 'LOP Days: ', bold: true }, `${entry.lopDays}`], alignment: 'left' },
+                  { text: '', alignment: 'right' },
+                ],
+              ],
+            },
+            layout: 'noBorders',
           },
           { text: '\n' },
-          // Earnings table
-          { text: 'Earnings', style: 'sectionHeader' },
+          // Salary Breakdown
+          { text: 'EARNINGS', style: 'sectionHeader' },
           {
             table: {
               headerRows: 1,
               widths: ['*', 'auto'],
               body: [
                 [
-                  { text: 'Component', bold: true },
-                  { text: 'Amount', bold: true },
+                  { text: 'Component', style: 'tableHeader' },
+                  { text: 'Amount (₹)', style: 'tableHeader' },
                 ],
                 ...earnings.map((c) => [
                   c.componentName,
                   Number(c.amount).toFixed(2),
                 ]),
                 [
-                  { text: 'Gross Earnings', bold: true },
-                  { text: totalEarnings.toFixed(2), bold: true },
+                  { text: 'Gross Earnings', style: 'totalRow' },
+                  { text: totalEarnings.toFixed(2), style: 'totalRow' },
                 ],
               ],
             },
           },
           { text: '\n' },
-          // Deductions table
-          { text: 'Deductions', style: 'sectionHeader' },
+          { text: 'DEDUCTIONS', style: 'sectionHeader' },
           {
             table: {
               headerRows: 1,
               widths: ['*', 'auto'],
               body: [
                 [
-                  { text: 'Component', bold: true },
-                  { text: 'Amount', bold: true },
+                  { text: 'Component', style: 'tableHeader' },
+                  { text: 'Amount (₹)', style: 'tableHeader' },
                 ],
                 ...deductions.map((c) => [
                   c.componentName,
                   Number(c.amount).toFixed(2),
                 ]),
                 [
-                  { text: 'Total Deductions', bold: true },
-                  { text: totalDeductions.toFixed(2), bold: true },
+                  { text: 'Total Deductions', style: 'totalRow' },
+                  { text: totalDeductions.toFixed(2), style: 'totalRow' },
                 ],
               ],
             },
           },
           { text: '\n' },
-          // Summary
+          // Net Payable
           {
             table: {
-              widths: ['*', '*', '*'],
+              widths: ['*', 'auto'],
               body: [
                 [
-                  { text: `Working Days: ${entry.workingDays}`, alignment: 'center' },
-                  { text: `Present Days: ${entry.presentDays}`, alignment: 'center' },
-                  { text: `LOP Days: ${entry.lopDays}`, alignment: 'center' },
+                  { text: 'Net Payable', style: 'netPayableLabel' },
+                  { text: `₹ ${Number(entry.netPayable).toFixed(2)}`, style: 'netPayableAmount' },
                 ],
               ],
             },
           },
-          { text: '\n' },
-          {
-            text: `Net Payable: ${Number(entry.netPayable).toFixed(2)}`,
-            style: 'netPayable',
-          },
           { text: '\n\n' },
-          { text: 'This is a system-generated payslip', style: 'footer' },
+          // Payment Details
+          ...(bank
+            ? [
+                { text: 'PAYMENT DETAILS', style: 'sectionHeader' },
+                {
+                  table: {
+                    widths: ['30%', '70%'],
+                    body: [
+                      [{ text: 'Bank Name', bold: true }, bank.bankName],
+                      [{ text: 'Account Name', bold: true }, bank.accountHolderName],
+                      [{ text: 'Account Number', bold: true }, bank.accountNumber.slice(-4).padStart(bank.accountNumber.length, '●')],
+                      [{ text: 'IFSC Code', bold: true }, bank.ifscCode],
+                    ],
+                  },
+                  layout: 'noBorders',
+                },
+                { text: '\n' },
+              ]
+            : []),
+          // Footer
+          { text: 'This is a computer-generated payslip and does not require a signature.', style: 'footer' },
+          { text: `Generated on: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}`, style: 'footer' },
         ],
         styles: {
-          header: { fontSize: 16, bold: true, alignment: 'center' },
-          subheader: { fontSize: 12, alignment: 'center', margin: [0, 0, 0, 10] },
-          sectionHeader: { fontSize: 12, bold: true, margin: [0, 10, 0, 5] },
-          netPayable: { fontSize: 16, bold: true, alignment: 'center' },
-          footer: { fontSize: 8, italics: true, alignment: 'center', color: 'gray' },
+          companyHeader: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 4] },
+          periodHeader: { fontSize: 12, alignment: 'center', margin: [0, 0, 0, 10], color: '#555' },
+          sectionHeader: { fontSize: 11, bold: true, margin: [0, 10, 0, 5], color: '#333' },
+          tableHeader: { bold: true, fillColor: '#f0f0f0', margin: [4, 4, 4, 4] },
+          totalRow: { bold: true, margin: [4, 4, 4, 4] },
+          netPayableLabel: { fontSize: 14, bold: true, margin: [4, 8, 4, 8] },
+          netPayableAmount: { fontSize: 14, bold: true, alignment: 'right', margin: [4, 8, 4, 8], color: '#2e7d32' },
+          footer: { fontSize: 8, italics: true, alignment: 'center', color: '#999', margin: [0, 2, 0, 2] },
         },
         defaultStyle: { fontSize: 10 },
+        pageMargins: [40, 40, 40, 40],
       };
 
       // 3. Generate PDF buffer using pdfmake
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const PdfPrinter = require('pdfmake');
-      const fonts = {
-        Roboto: {
-          normal: `${__dirname}/../fonts/Roboto-Regular.ttf`,
-          bold: `${__dirname}/../fonts/Roboto-Medium.ttf`,
-          italics: `${__dirname}/../fonts/Roboto-Italic.ttf`,
-        },
-      };
-      const printer = new PdfPrinter(fonts);
-      const pdfDoc = printer.createPdfKitDocument(docDefinition);
+      const pdfmake = require('pdfmake');
+      const fonts: Record<string, any> = {};
+      try {
+        const fs = require('node:fs') as typeof import('node:fs');
+        const fontDir = `${__dirname}/../fonts`;
+        if (fs.existsSync(`${fontDir}/Roboto-Regular.ttf`)) {
+          fonts.Roboto = {
+            normal: `${fontDir}/Roboto-Regular.ttf`,
+            bold: `${fontDir}/Roboto-Medium.ttf`,
+            italics: `${fontDir}/Roboto-Italic.ttf`,
+          };
+          pdfmake.addFonts(fonts);
+        } else {
+          this.logger.warn('Roboto fonts not found in fonts directory');
+        }
+      } catch {
+        this.logger.warn('Font detection failed, proceeding without custom fonts');
+      }
+
+      const pdfDoc = pdfmake.createPdf(docDefinition);
+      const stream = pdfDoc.getStream();
 
       const buffer = await new Promise<Buffer>((resolve, reject) => {
         const chunks: Buffer[] = [];
-        pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
-        pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
-        pdfDoc.on('error', reject);
-        pdfDoc.end();
+        stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+        stream.on('end', () => resolve(Buffer.concat(chunks)));
+        stream.on('error', reject);
       });
 
-      // 4. Upload to S3 (placeholder — will use S3Service when available)
+      // 4. Upload to S3
       const key = `payslips/${entry.cycle.companyId}/${year}/${month}/${employeeId}_${cycleId}.pdf`;
-      // await s3Service.upload(key, buffer, 'application/pdf');
+      try {
+        await this.storage.upload(key, buffer, 'application/pdf');
+      } catch (storageErr) {
+        this.logger.warn({ key, error: (storageErr as Error).message }, 'S3 upload failed, saving payslip without S3');
+      }
 
-      // 5. Save PayslipEntity
+      // 5. Save Payslip record
       await this.prisma.unscopedClient.payslip.create({
         data: {
           companyId: entry.cycle.companyId,
@@ -180,6 +231,7 @@ export class PayslipGenProcessor extends WorkerHost {
           taxAmount: 0,
           status: 'PUBLISHED',
           s3Key: key,
+          s3Bucket: this.storage['bucket'] ?? 'hr-uploads',
           generatedAt: new Date(),
         },
       });

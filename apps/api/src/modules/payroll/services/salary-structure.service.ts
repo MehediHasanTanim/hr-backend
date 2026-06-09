@@ -173,4 +173,47 @@ export class SalaryStructureService {
     if (!structure) throw new NotFoundError('Salary structure not found');
     return structure;
   }
+
+  async clone(id: string, newName: string, companyId: string) {
+    const source = await this.findOneOrFail(id, companyId);
+
+    // Validate unique name
+    const existing = await this.prisma.unscopedClient.salaryStructure.findFirst({
+      where: { companyId, name: newName, isActive: true },
+    });
+    if (existing) {
+      throw new BadRequestError(`A salary structure named "${newName}" already exists`);
+    }
+
+    return this.prisma.unscopedClient.$transaction(async (tx) => {
+      const clone = await tx.salaryStructure.create({
+        data: {
+          companyId,
+          name: newName,
+          description: source.description ? `Clone of "${source.name}": ${source.description}` : `Clone of "${source.name}"`,
+        },
+      });
+
+      for (const sc of source.components) {
+        await tx.salaryStructureComponent.create({
+          data: {
+            structureId: clone.id,
+            componentId: sc.componentId,
+            sortOrder: sc.sortOrder,
+            defaultValue: Number(sc.defaultValue),
+          },
+        });
+      }
+
+      return tx.salaryStructure.findUnique({
+        where: { id: clone.id },
+        include: {
+          components: {
+            include: { component: true },
+            orderBy: { sortOrder: 'asc' },
+          },
+        },
+      });
+    });
+  }
 }

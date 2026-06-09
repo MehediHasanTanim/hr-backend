@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@hr/prisma';
 import { NotFoundError, ForbiddenError } from '@hr/shared';
+import { StorageService } from './storage.service';
 import type { RequestContext } from '../../../common/context/request-context';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class PayslipService {
 
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(StorageService) private readonly storage: StorageService,
   ) {}
 
   async listPayslips(
@@ -49,15 +51,27 @@ export class PayslipService {
     ]);
 
     // Generate signed URLs lazily — only if list <= 20
-    const resultItems = items.map((p) => ({
-      id: p.id,
-      cycleId: p.cycleId,
-      month: p.cycle?.month,
-      year: p.cycle?.year,
-      netPayable: p.entry?.netPayable ? Number(p.entry.netPayable) : 0,
-      generatedAt: p.generatedAt,
-      downloadUrl: null as string | null, // SDK call placeholder
-    }));
+    const resultItems = await Promise.all(
+      items.map(async (p) => {
+        let downloadUrl: string | null = null;
+        if (p.s3Key) {
+          try {
+            downloadUrl = await this.storage.getSignedUrl(p.s3Key, 900);
+          } catch {
+            this.logger.warn({ payslipId: p.id }, 'Failed to generate signed URL');
+          }
+        }
+        return {
+          id: p.id,
+          cycleId: p.cycleId,
+          month: p.cycle?.month,
+          year: p.cycle?.year,
+          netPayable: p.entry?.netPayable ? Number(p.entry.netPayable) : 0,
+          generatedAt: p.generatedAt,
+          downloadUrl,
+        };
+      }),
+    );
 
     return { items: resultItems, total, page, pageSize };
   }
@@ -83,9 +97,29 @@ export class PayslipService {
       throw new ForbiddenError('Access denied');
     }
 
+    // Generate signed URL
+    let signedUrl: string | null = null;
+    if (payslip.s3Key) {
+      try {
+        signedUrl = await this.storage.getSignedUrl(payslip.s3Key, 900);
+      } catch {
+        this.logger.warn({ payslipId: id }, 'Failed to generate signed URL');
+      }
+    }
+
+    const { s3Key, s3Bucket, ...rest } = payslip;
     return {
-      ...payslip,
-      downloadUrl: null as string | null,
+      ...rest,
+      employee: payslip.employee,
+      salaryBreakdown: {
+        earnings: payslip.entry?.components?.filter((c) => c.type === 'EARNING') ?? [],
+        deductions: payslip.entry?.components?.filter((c) => c.type === 'DEDUCTION') ?? [],
+        grossAmount: payslip.grossAmount ? Number(payslip.grossAmount) : 0,
+        netAmount: payslip.netAmount ? Number(payslip.netAmount) : 0,
+      },
+      cycleInfo: payslip.entry?.cycle ?? null,
+      signedUrl,
+      downloadUrl: signedUrl,
     };
   }
 }

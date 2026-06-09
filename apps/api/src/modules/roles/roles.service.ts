@@ -18,6 +18,7 @@ export class RolesService {
     });
   }
 
+
   listRoles(companyId: string): Promise<Role[]> {
     return this.prisma.forCompany(companyId).role.findMany({
       include: { permissions: { include: { permission: true } } },

@@ -1,5 +1,7 @@
 import { BadRequestError } from '@hr/shared';
 import { Parser } from 'expr-eval';
+import { FormulaEvaluationError } from '../services/payroll-engine';
+import { round2dp } from './round2dp';
 
 const DISALLOWED_KEYWORDS = [
   'eval', 'require', 'import', 'process', 'global', 'window',
@@ -132,6 +134,3 @@ export function evaluateFormula(formula: string, context: Record<string, number>
     );
   }
 }
-
-import { FormulaEvaluationError } from '../services/payroll-engine';
-import { round2dp } from './round2dp';

@@ -1,6 +1,131 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`PayrollEngine — snapshot tests > standard structure with 3 LOP days (26 working days, 23 present) > netPayable matches snapshot with 3 LOP days 1`] = `
+exports[`PayrollEngine — snapshot tests > 21-working-days > matches normalized snapshot > 21-working-days 1`] = `
+{
+  "components": [
+    {
+      "amount": 50000,
+      "code": "BASIC",
+      "type": "earning",
+    },
+    {
+      "amount": 20000,
+      "code": "HRA",
+      "type": "earning",
+    },
+    {
+      "amount": 7000,
+      "code": "TDS",
+      "type": "deduction",
+    },
+    {
+      "amount": 1800,
+      "code": "PF",
+      "type": "deduction",
+    },
+  ],
+  "grossEarnings": 70000,
+  "netPayable": 61200,
+  "totalDeductions": 8800,
+}
+`;
+
+exports[`PayrollEngine — snapshot tests > 21-working-days-5-lop > matches normalized snapshot > 21-working-days-5-lop 1`] = `
+{
+  "components": [
+    {
+      "amount": 38095.24,
+      "code": "BASIC",
+      "type": "earning",
+    },
+    {
+      "amount": 15238.1,
+      "code": "HRA",
+      "type": "earning",
+    },
+    {
+      "amount": 5333.33,
+      "code": "TDS",
+      "type": "deduction",
+    },
+    {
+      "amount": 1800,
+      "code": "PF",
+      "type": "deduction",
+    },
+  ],
+  "grossEarnings": 53333.34,
+  "netPayable": 46200.01,
+  "totalDeductions": 7133.33,
+}
+`;
+
+exports[`PayrollEngine — snapshot tests > formula-chain > matches normalized snapshot > formula-chain 1`] = `
+{
+  "components": [
+    {
+      "amount": 50000,
+      "code": "BASIC",
+      "type": "earning",
+    },
+    {
+      "amount": 20000,
+      "code": "HRA",
+      "type": "earning",
+    },
+    {
+      "amount": 70000,
+      "code": "SPECIAL",
+      "type": "earning",
+    },
+    {
+      "amount": 1800,
+      "code": "PF",
+      "type": "deduction",
+    },
+    {
+      "amount": 7000,
+      "code": "TDS",
+      "type": "deduction",
+    },
+  ],
+  "grossEarnings": 140000,
+  "netPayable": 131200,
+  "totalDeductions": 8800,
+}
+`;
+
+exports[`PayrollEngine — snapshot tests > higher-ctc > matches normalized snapshot > higher-ctc 1`] = `
+{
+  "components": [
+    {
+      "amount": 50000,
+      "code": "BASIC",
+      "type": "earning",
+    },
+    {
+      "amount": 20000,
+      "code": "HRA",
+      "type": "earning",
+    },
+    {
+      "amount": 7000,
+      "code": "TDS",
+      "type": "deduction",
+    },
+    {
+      "amount": 1800,
+      "code": "PF",
+      "type": "deduction",
+    },
+  ],
+  "grossEarnings": 70000,
+  "netPayable": 61200,
+  "totalDeductions": 8800,
+}
+`;
+
+exports[`PayrollEngine — snapshot tests > standard-3-lop > matches normalized snapshot > standard-3-lop 1`] = `
 {
   "components": [
     {
@@ -30,7 +155,67 @@ exports[`PayrollEngine — snapshot tests > standard structure with 3 LOP days (
 }
 `;
 
-exports[`PayrollEngine — snapshot tests > standard structure, full month (26 working days, 0 LOP) > matches full component breakdown snapshot 1`] = `
+exports[`PayrollEngine — snapshot tests > standard-10-lop > matches normalized snapshot > standard-10-lop 1`] = `
+{
+  "components": [
+    {
+      "amount": 30769.23,
+      "code": "BASIC",
+      "type": "earning",
+    },
+    {
+      "amount": 12307.69,
+      "code": "HRA",
+      "type": "earning",
+    },
+    {
+      "amount": 4307.69,
+      "code": "TDS",
+      "type": "deduction",
+    },
+    {
+      "amount": 1800,
+      "code": "PF",
+      "type": "deduction",
+    },
+  ],
+  "grossEarnings": 43076.92,
+  "netPayable": 36969.23,
+  "totalDeductions": 6107.69,
+}
+`;
+
+exports[`PayrollEngine — snapshot tests > standard-full-lop > matches normalized snapshot > standard-full-lop 1`] = `
+{
+  "components": [
+    {
+      "amount": 0,
+      "code": "BASIC",
+      "type": "earning",
+    },
+    {
+      "amount": 0,
+      "code": "HRA",
+      "type": "earning",
+    },
+    {
+      "amount": 0,
+      "code": "TDS",
+      "type": "deduction",
+    },
+    {
+      "amount": 0,
+      "code": "PF",
+      "type": "deduction",
+    },
+  ],
+  "grossEarnings": 0,
+  "netPayable": 0,
+  "totalDeductions": 0,
+}
+`;
+
+exports[`PayrollEngine — snapshot tests > standard-full-month > matches normalized snapshot > standard-full-month 1`] = `
 {
   "components": [
     {

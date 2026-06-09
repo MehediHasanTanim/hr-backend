@@ -147,7 +147,7 @@ export function detectCircularDependency(
     if (!formula) return [];
     const tokens = formula.match(tokenPattern) ?? [];
     const knownCodes = new Set(formulaMap.keys());
-    return [...new Set(tokens.filter((t) => knownCodes.has(t) && t !== code))];
+    return [...new Set(tokens.filter((t) => knownCodes.has(t)))];
   }
 
   function hasCycle(node: string, visited: Set<string>, stack: Set<string>): boolean {
