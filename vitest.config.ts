@@ -29,6 +29,13 @@ export default defineConfig({
         'apps/api/src/modules/leave/services/leave-request.service.ts',
         'apps/api/src/modules/attendance/services/attendance.service.ts',
         'libs/prisma/src/extensions/tenant-scope.extension.ts',
+        // Sprint 5 modules
+        'apps/api/src/modules/esign/esign.service.ts',
+        'apps/api/src/modules/policy/policy.service.ts',
+        'apps/api/src/modules/notifications/notifications.service.ts',
+        'apps/api/src/modules/notifications/processors/email-dispatch.processor.ts',
+        'apps/api/src/modules/audit/audit.service.ts',
+        'apps/api/src/modules/documents/documents.service.ts',
       ],
       exclude: [
         '**/*.spec.ts',

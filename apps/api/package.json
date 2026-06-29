@@ -15,6 +15,7 @@
     "test:regression:watch": "vitest --config src/__tests__/vitest.integration.config.ts"
   },
   "dependencies": {
+    "@aws-sdk/lib-storage": "^3.1075.0",
     "@fastify/cookie": "^11.0.2",
     "@fastify/swagger": "^9.5.2",
     "@fastify/swagger-ui": "^5.2.3",

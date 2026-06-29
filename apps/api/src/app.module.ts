@@ -24,6 +24,11 @@ import { HolidayModule } from './modules/holiday/holiday.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { BulkImportModule } from './modules/bulk-import/bulk-import.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { PolicyModule } from './modules/policy/policy.module';
+import { EsignModule } from './modules/esign/esign.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { DomainEventsModule } from './modules/employees/events/domain-events.module';
 
 @Module({
   imports: [
@@ -32,6 +37,7 @@ import { BulkImportModule } from './modules/bulk-import/bulk-import.module';
     LoggerModule,
     RedisModule,
     MailModule,
+    DomainEventsModule,
     ThrottlerModule.forRootAsync({
       inject: [AppConfigService],
       useFactory: (config: AppConfigService) => ({
@@ -60,6 +66,10 @@ import { BulkImportModule } from './modules/bulk-import/bulk-import.module';
     ComplianceModule,
     OrgModule,
     BulkImportModule,
+    DocumentsModule,
+    PolicyModule,
+    EsignModule,
+    NotificationsModule,
   ],
   providers: [
     LogContextMiddleware,

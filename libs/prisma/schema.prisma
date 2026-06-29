@@ -61,6 +61,9 @@ model Company {
   shiftAssignments     ShiftAssignment[]
   overtimeRequests     OvertimeRequest[]
   workFromHomeRequests WorkFromHomeRequest[]
+  policies             Policy[]
+  policyAcknowledgements PolicyAcknowledgement[]
+  esignRequests        EsignRequest[]
 
   @@index([slug])
   @@index([isActive])
@@ -221,6 +224,8 @@ model Employee {
   employeeSalaries          EmployeeSalary[]
   bankDetails               EmployeeBankDetail[]
   payrollEntries            PayrollEntry[]
+  policyAcknowledgements  PolicyAcknowledgement[]
+  esignRequestsAsSigner   EsignRequest[]           @relation("EsignSigner")
 
   @@unique([companyId, employeeNumber])
   @@unique([companyId, workEmail])
@@ -1280,9 +1285,14 @@ model EmployeeDocument {
   templateId   String?           @db.Uuid
   name         String            @db.VarChar(150)
   type         String            @db.VarChar(80)
-  fileUrl      String            @db.Text
+  category     String?           @db.VarChar(100)
+  fileUrl      String?           @db.Text
   fileSize     Int
   mimeType     String            @db.VarChar(100)
+  s3Key        String?           @db.VarChar(500)
+  sha256Hash   String?           @db.Char(64)
+  version      Int               @default(1)
+  description  String?           @db.VarChar(255)
   expiresAt    DateTime?         @db.Date
   isVerified   Boolean           @default(false)
   uploadedById String            @db.Uuid
@@ -1290,12 +1300,83 @@ model EmployeeDocument {
   deletedAt    DateTime?
   employee     Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   template     DocumentTemplate? @relation(fields: [templateId], references: [id])
+  esignRequests EsignRequest[]
 
   @@index([companyId])
   @@index([employeeId])
+  @@index([employeeId, category])
+  @@index([sha256Hash])
   @@index([templateId])
   @@index([deletedAt])
   @@map("employee_documents")
+}
+
+// ===== Sprint 5: Policy Module =====
+
+model Policy {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String       @db.Uuid
+  title       String       @db.VarChar(255)
+  content     String       @db.Text
+  category    String       @db.VarChar(50)
+  status      PolicyStatus @default(DRAFT)
+  createdBy   String       @db.Uuid
+  publishedBy String?      @db.Uuid
+  publishedAt DateTime?    @db.Timestamptz
+  version     Int          @default(1)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  acknowledgements PolicyAcknowledgement[]
+
+  @@index([companyId])
+  @@index([status])
+  @@index([category])
+  @@map("policies")
+}
+
+model PolicyAcknowledgement {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  policyId        String   @db.Uuid
+  employeeId      String   @db.Uuid
+  companyId       String   @db.Uuid
+  acknowledgedAt  DateTime @default(now())
+  policy          Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([policyId, employeeId])
+  @@index([policyId])
+  @@index([employeeId])
+  @@map("policy_acknowledgements")
+}
+
+// ===== Sprint 5: Esign Module =====
+
+model EsignRequest {
+  id                  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId           String      @db.Uuid
+  documentId          String      @db.Uuid
+  requestedBy         String      @db.Uuid
+  signerEmployeeId    String      @db.Uuid
+  status              EsignStatus @default(PENDING)
+  base64Signature     String?     @db.Text
+  documentSha256AtSign String?    @db.Char(64)
+  declineReason       String?     @db.Text
+  expiresAt           DateTime    @db.Timestamptz
+  signedAt            DateTime?   @db.Timestamptz
+  declinedAt          DateTime?   @db.Timestamptz
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  company             Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  document            EmployeeDocument @relation(fields: [documentId], references: [id])
+  signer              Employee    @relation("EsignSigner", fields: [signerEmployeeId], references: [id])
+
+  @@index([companyId])
+  @@index([signerEmployeeId, status])
+  @@index([documentId, status])
+  @@index([expiresAt])
+  @@map("esign_requests")
 }
 
 model Asset {
@@ -1548,15 +1629,19 @@ model Notification {
   title       String              @db.VarChar(200)
   body        String              @db.Text
   actionUrl   String?             @db.Text
+  metadata    Json?
   isRead      Boolean             @default(false)
   readAt      DateTime?
   channel     NotificationChannel @default(IN_APP)
+  emailSent   Boolean             @default(false)
+  emailSentAt DateTime?
   deliveredAt DateTime?
   createdAt   DateTime            @default(now())
   company     Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@index([userId, isRead])
+  @@index([userId, createdAt(sort: Desc)])
   @@index([createdAt])
   @@map("notifications")
 }
@@ -1923,10 +2008,17 @@ enum ProjectStatus {
 
 enum NotificationType {
   LEAVE_REQUEST
+  LEAVE_REQUESTED
+  LEAVE_APPROVED
+  LEAVE_REJECTED
   PAYSLIP
+  PAYSLIP_READY
   ANNOUNCEMENT
   ATTENDANCE
   SYSTEM
+  POLICY_PUBLISHED
+  AUDIT_EXPORT_READY
+  ESIGN_REQUEST
 }
 
 enum NotificationChannel {
@@ -1943,4 +2035,19 @@ enum ApplicationStatus {
   OFFER
   HIRED
   REJECTED
+}
+
+// ===== Sprint 5: Documents, Compliance & Notifications =====
+
+enum PolicyStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EsignStatus {
+  PENDING
+  SIGNED
+  DECLINED
+  EXPIRED
 }
