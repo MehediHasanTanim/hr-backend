@@ -2019,6 +2019,7 @@ enum NotificationType {
   POLICY_PUBLISHED
   AUDIT_EXPORT_READY
   ESIGN_REQUEST
+  REPORT_READY
 }
 
 enum NotificationChannel {
@@ -2050,4 +2051,53 @@ enum EsignStatus {
   SIGNED
   DECLINED
   EXPIRED
+}
+
+// ===== Sprint 6: Reports Module =====
+
+enum ReportKey {
+  HEADCOUNT
+  ATTRITION
+  PAYROLL_SUMMARY
+  LEAVE_UTILIZATION
+  ATTENDANCE_SUMMARY
+  NEW_HIRES
+  EXITS
+}
+
+enum ExportFormat {
+  XLSX
+  PDF
+}
+
+model SavedReport {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String     @db.VarChar(255)
+  reportKey   ReportKey
+  parameters  Json
+  createdById String     @db.Uuid
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  schedules   ReportSchedule[]
+
+  @@index([createdById])
+  @@map("saved_reports")
+}
+
+model ReportSchedule {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  savedReportId  String       @db.Uuid
+  cronExpression String       @db.VarChar(100)
+  format         ExportFormat
+  recipientId    String?      @db.Uuid
+  isActive       Boolean      @default(true)
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  createdAt      DateTime     @default(now())
+  savedReport    SavedReport  @relation(fields: [savedReportId], references: [id], onDelete: Cascade)
+
+  @@index([savedReportId])
+  @@index([isActive])
+  @@index([nextRunAt])
+  @@map("report_schedules")
 }

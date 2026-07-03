@@ -67,8 +67,8 @@ export class AuthController {
   }
 
   @Get('me')
-  me(@CurrentUser() user: RequestContext) {
-    return user;
+  async me(@CurrentUser() user: RequestContext) {
+    return this.authService.getMe(user.userId);
   }
 
   @Post('forgot-password')

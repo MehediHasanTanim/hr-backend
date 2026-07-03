@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService, seedCompanyDefaults } from '@hr/prisma';
 import { BadRequestError, ConflictError, ForbiddenError, UnauthorizedError } from '@hr/shared';
 import { EmployeeStatus, EmploymentType, type Prisma } from '@prisma/client';
@@ -16,11 +16,13 @@ import { EmailVerificationService } from './email-verification.service';
 import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
 import type { LoginResultWithMfa, LoginWithRefreshResult, RegisterResult, SsoProfile } from './auth.types';
+import type { MeResponseDto, LeaveBalanceSummaryDto } from './dto/me-response.dto';
 
 const DUMMY_ARGON2ID_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHRmb3J0ZXN0cw$YlEArsS6LQMQPoK/1l7W9mwpcKg7r+54oJYhCQJ0eK8';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(PasswordService) private readonly passwordService: PasswordService,
@@ -363,4 +365,118 @@ export class AuthService {
     });
   }
   /* v8 ignore stop */
+
+  /**
+   * Enriched profile endpoint for ESS (Employee Self-Service).
+   * Runs supplementary queries (leave balances, pending tasks, unread notifications)
+   * in parallel on the read path. Any supplementary query failure returns a safe default.
+   */
+  async getMe(userId: string): Promise<MeResponseDto> {
+    // 1. Load core employee profile (primary path)
+    const employee = await this.prisma.unscopedClient.employee.findFirst({
+      where: { userId },
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true } },
+        department: { select: { id: true, name: true } },
+        jobTitle: { select: { title: true } },
+        roles: { include: { role: { select: { name: true } } } },
+      },
+    });
+
+    if (!employee || !employee.user) {
+      throw new UnauthorizedError('Employee profile not found');
+    }
+
+    const currentYear = new Date().getFullYear();
+    const primaryRole = employee.roles[0]?.role?.name ?? 'EMPLOYEE';
+
+    // 2. Supplementary queries in parallel (safe defaults on failure)
+    const [leaveBalances, pendingTaskCount, unreadNotificationCount] =
+      await Promise.all([
+        this.getLeaveBalancesSafe(employee.id, currentYear),
+        this.getPendingTaskCountSafe(employee.id),
+        this.getUnreadNotificationCountSafe(employee.id, employee.companyId),
+      ]);
+
+    return {
+      id: employee.id,
+      name: `${employee.user.firstName} ${employee.user.lastName}`.trim(),
+      email: employee.user.email,
+      role: primaryRole,
+      departmentId: employee.department?.id ?? '',
+      departmentName: employee.department?.name ?? '',
+      jobTitle: employee.jobTitle?.title ?? '',
+      leaveBalances,
+      pendingTaskCount,
+      unreadNotificationCount,
+    };
+  }
+
+  private async getLeaveBalancesSafe(
+    employeeId: string,
+    year: number,
+  ): Promise<LeaveBalanceSummaryDto[]> {
+    try {
+      const balances = await this.prisma.unscopedClient.leaveBalance.findMany({
+        where: { employeeId, year },
+        include: { leaveType: { select: { name: true } } },
+      });
+
+      return balances.map((lb) => ({
+        leaveType: lb.leaveType.name,
+        entitled: Number(lb.entitled),
+        taken: Number(lb.used),
+        remaining: Number(lb.balance),
+      }));
+    } catch (err) {
+      this.logger.error('Failed to fetch leave balances for me endpoint', err);
+      return [];
+    }
+  }
+
+  private async getPendingTaskCountSafe(employeeId: string): Promise<number> {
+    try {
+      // Count pending eSign requests and leave approval steps assigned to the employee
+      const [esignCount, approvalCount] = await Promise.all([
+        this.prisma.unscopedClient.esignRequest.count({
+          where: {
+            signerEmployeeId: employeeId,
+            status: 'PENDING',
+          },
+        }),
+        this.prisma.unscopedClient.leaveApprovalStep.count({
+          where: {
+            approverId: employeeId,
+            status: 'PENDING',
+          },
+        }),
+      ]);
+
+      return esignCount + approvalCount;
+    } catch (err) {
+      this.logger.error('Failed to fetch pending task count for me endpoint', err);
+      return 0;
+    }
+  }
+
+  private async getUnreadNotificationCountSafe(
+    employeeId: string,
+    companyId: string,
+  ): Promise<number> {
+    try {
+      return await this.prisma.unscopedClient.notification.count({
+        where: {
+          userId: employeeId,
+          companyId,
+          isRead: false,
+        },
+      });
+    } catch (err) {
+      this.logger.error(
+        'Failed to fetch unread notification count for me endpoint',
+        err,
+      );
+      return 0;
+    }
+  }
 }

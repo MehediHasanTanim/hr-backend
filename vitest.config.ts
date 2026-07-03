@@ -36,6 +36,13 @@ export default defineConfig({
         'apps/api/src/modules/notifications/processors/email-dispatch.processor.ts',
         'apps/api/src/modules/audit/audit.service.ts',
         'apps/api/src/modules/documents/documents.service.ts',
+        // Sprint 6 modules
+        'apps/api/src/modules/reports/services/report-query.service.ts',
+        'apps/api/src/modules/reports/services/saved-report.service.ts',
+        'apps/api/src/modules/reports/services/report-schedule.service.ts',
+        'apps/api/src/modules/reports/workers/report-export.processor.ts',
+        'apps/api/src/modules/reports/workers/schedule-dispatcher.processor.ts',
+        'apps/api/src/modules/mss/mss.service.ts',
       ],
       exclude: [
         '**/*.spec.ts',

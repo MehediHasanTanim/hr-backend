@@ -1,8 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@hr/prisma';
-import { DomainEventsService } from '../../employees/events/domain-events.service';
-import { EmailDispatchProcessor } from '../processors/email-dispatch.processor';
-import type { EmailDispatchJob } from '../notifications.service';
+import { DomainEventsService } from '../employees/events/domain-events.service';
+import { EmailDispatchProcessor } from './processors/email-dispatch.processor';
+import type { EmailDispatchJob } from './notifications.service';
 import {
   LEAVE_REQUESTED,
   LEAVE_APPROVED,
@@ -10,7 +10,7 @@ import {
   PAYSLIP_READY,
   POLICY_PUBLISHED,
   ESIGN_REQUEST_CREATED,
-} from '../../../common/events/hr-events.constants';
+} from '../../common/events/hr-events.constants';
 
 @Injectable()
 export class NotificationEventHandlers {

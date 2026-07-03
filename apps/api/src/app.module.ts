@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from '@hr/prisma';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
+import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from './config/config.module';
 import { LoggerModule } from './logger/logger.module';
 import { HealthModule } from './health/health.module';
@@ -28,6 +29,8 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { PolicyModule } from './modules/policy/policy.module';
 import { EsignModule } from './modules/esign/esign.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { MssModule } from './modules/mss/mss.module';
 import { DomainEventsModule } from './modules/employees/events/domain-events.module';
 
 @Module({
@@ -38,6 +41,14 @@ import { DomainEventsModule } from './modules/employees/events/domain-events.mod
     RedisModule,
     MailModule,
     DomainEventsModule,
+    BullModule.forRootAsync({
+      inject: [AppConfigService],
+      useFactory: (config: AppConfigService) => ({
+        connection: {
+          url: config.get('redis').url,
+        },
+      }),
+    }),
     ThrottlerModule.forRootAsync({
       inject: [AppConfigService],
       useFactory: (config: AppConfigService) => ({
@@ -70,6 +81,8 @@ import { DomainEventsModule } from './modules/employees/events/domain-events.mod
     PolicyModule,
     EsignModule,
     NotificationsModule,
+    ReportsModule,
+    MssModule,
   ],
   providers: [
     LogContextMiddleware,
