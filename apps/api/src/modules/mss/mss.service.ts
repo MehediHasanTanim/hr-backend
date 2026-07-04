@@ -1,6 +1,6 @@
 import { Inject, Injectable, ForbiddenException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@hr/prisma';
-import { round2dp } from '../../payroll/utils/round2dp';
+import { round2dp } from '../payroll/utils/round2dp';
 import type { RequestContext } from '../../../common/context/request-context';
 import type {
   EmployeeSummaryResponseDto,

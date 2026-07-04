@@ -2,8 +2,8 @@ import { Inject, Injectable, NotFoundException, ForbiddenException } from '@nest
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '@hr/prisma';
-import { QUEUE_NAMES } from '../../../../common/queues.constants';
-import { AuditService } from '../../../audit/audit.service';
+import { QUEUE_NAMES } from '../../../common/queues.constants';
+import { AuditService } from '../../audit/audit.service';
 import { ExportFormat } from '../enums/export-format.enum';
 import type { SaveReportDto } from '../dto/save-report.dto';
 import type { TriggerExportDto } from '../dto/trigger-export.dto';

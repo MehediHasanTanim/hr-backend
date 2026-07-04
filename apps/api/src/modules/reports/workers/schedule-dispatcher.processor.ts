@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Processor, Process } from '@nestjs/bullmq';
-import { QUEUE_NAMES } from '../../../../common/queues.constants';
+import { QUEUE_NAMES } from '../../../common/queues.constants';
 import { ReportScheduleService } from '../services/report-schedule.service';
 
 @Injectable()
