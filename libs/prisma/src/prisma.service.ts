@@ -60,7 +60,14 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     return this.$extends(softDeleteExtension).$extends(withTenantScope(companyId));
   }
 
+  /**
+   * Returns a Prisma client with the soft-delete extension applied.
+   * All delete() operations become soft deletes (sets deletedAt),
+   * and all read operations automatically filter out deleted records.
+   *
+   * For tenant-scoped queries, use {@link forCompany} instead.
+   */
   get unscopedClient(): PrismaClient {
-    return this as PrismaClient;
+    return this.$extends(softDeleteExtension) as unknown as PrismaClient;
   }
 }

@@ -76,7 +76,7 @@ export class ReportScheduleService {
 
   async enqueueBySchedule(scheduleId: string): Promise<void> {
     const schedule = await this.prisma.unscopedClient.reportSchedule.findUnique({
-      where: { id },
+      where: { id: scheduleId },
       include: { savedReport: true },
     });
 
@@ -94,7 +94,7 @@ export class ReportScheduleService {
     const nextRunAt = new Date(now.getTime() + 60 * 60 * 1000);
 
     await this.prisma.unscopedClient.reportSchedule.update({
-      where: { id },
+      where: { id: scheduleId },
       data: { lastRunAt: now, nextRunAt },
     });
 

@@ -19,13 +19,13 @@ describe('ReportScheduleService', () => {
   const ACTOR_ID = 'actor-uuid-001';
   const SAVED_REPORT_ID = 'saved-report-uuid';
   const SCHEDULE_ID = 'schedule-uuid';
-  const VALID_CRON = '0 9 * * MON';
+  const VALID_CRON = '0 9 * * 1';
   const INVALID_CRON = 'not-a-cron';
 
   const mockSchedule = (overrides: Record<string, unknown> = {}) => ({
     id: SCHEDULE_ID,
     savedReportId: SAVED_REPORT_ID,
-    cronExpression: VALID_CRON,
+    cronExpression: '0 9 * * 1',
     format: ExportFormat.XLSX,
     recipientId: ACTOR_ID,
     isActive: true,
@@ -87,8 +87,9 @@ describe('ReportScheduleService', () => {
         ACTOR_ID,
       );
 
+      expect(result).toBeDefined();
       expect(result.id).toBe(SCHEDULE_ID);
-      expect(mockPrisma.unscopedClient.reportSchedule.create).toHaveBeenCalled();
+      expect(mockPrisma.unscopedClient.reportSchedule.create).toHaveBeenCalledTimes(1);
     });
 
     it('throws BadRequestException for invalid cron expression', async () => {
@@ -102,15 +103,18 @@ describe('ReportScheduleService', () => {
       expect(mockPrisma.unscopedClient.reportSchedule.create).not.toHaveBeenCalled();
     });
 
-    it('stores the cronExpression and format in create data', async () => {
+    it('passes cronExpression and format to create data', async () => {
       await service.create(
         { savedReportId: SAVED_REPORT_ID, cronExpression: VALID_CRON, format: ExportFormat.PDF },
         ACTOR_ID,
       );
 
-      const createCall = mockPrisma.unscopedClient.reportSchedule.create.mock.calls[0][0];
-      expect(createCall.data.cronExpression).toBe(VALID_CRON);
-      expect(createCall.data.format).toBe(ExportFormat.PDF);
+      expect(mockPrisma.unscopedClient.reportSchedule.create).toHaveBeenCalledTimes(1);
+      const createArg = mockPrisma.unscopedClient.reportSchedule.create.mock.calls[0][0];
+      expect(createArg).toBeDefined();
+      expect(createArg.data).toBeDefined();
+      expect(createArg.data.cronExpression).toBe(VALID_CRON);
+      expect(createArg.data.format).toBe(ExportFormat.PDF);
     });
   });
 

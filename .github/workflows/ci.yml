@@ -165,3 +165,106 @@ jobs:
           name: regression-report
           path: apps/api/coverage/regression-report.html
           retention-days: 14
+
+  integration:
+    name: Integration Tests (TestContainers)
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: npx prisma generate --schema=libs/prisma/schema.prisma
+      - name: Run integration tests
+        run: npx vitest run test/integration/**/*.integration.spec.ts --reporter=verbose
+        env:
+          NODE_ENV: test
+        timeout-minutes: 15
+
+  e2e-smoke:
+    name: E2E Smoke (Playwright)
+    runs-on: ubuntu-latest
+    needs: integration
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hr_user
+          POSTGRES_PASSWORD: hr_pass
+          POSTGRES_DB: hr_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: npx prisma generate --schema=libs/prisma/schema.prisma
+      - name: Run migrations
+        run: npx prisma migrate deploy --schema=libs/prisma/schema.prisma
+        env:
+          DATABASE_URL: postgresql://hr_user:hr_pass@localhost:5432/hr_e2e
+      - name: Seed E2E users
+        run: npx tsx scripts/seed-e2e-users.ts
+        env:
+          DATABASE_URL: postgresql://hr_user:hr_pass@localhost:5432/hr_e2e
+          E2E_HR_ADMIN_EMAIL: hr-admin@e2e.internal
+          E2E_EMPLOYEE_EMAIL: employee@e2e.internal
+          E2E_MANAGER_EMAIL: manager@e2e.internal
+          E2E_PASSWORD: SmokeTest@1234
+      - name: Start server
+        run: |
+          npx tsx apps/api/src/main.ts &
+          sleep 5
+        env:
+          DATABASE_URL: postgresql://hr_user:hr_pass@localhost:5432/hr_e2e
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          PORT: 3000
+          MINIO_ENDPOINT: localhost
+          MINIO_ACCESS_KEY: access
+          MINIO_SECRET_KEY: secret
+          JWT_PRIVATE_KEY_PATH: keys/private.pem
+          JWT_PUBLIC_KEY_PATH: keys/public.pem
+          COOKIE_SECRET: 12345678901234567890123456789012
+          ENCRYPTION_KEY: 01234567890123456789012345678901
+          MAIL_HOST: localhost
+          MAIL_FROM: test@example.com
+          LOG_LEVEL: info
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E smoke tests
+        run: npx playwright test e2e/smoke/ --reporter=github
+        env:
+          BASE_URL: http://localhost:3000
+          E2E_HR_ADMIN_EMAIL: hr-admin@e2e.internal
+          E2E_EMPLOYEE_EMAIL: employee@e2e.internal
+          E2E_MANAGER_EMAIL: manager@e2e.internal
+          E2E_HR_ADMIN_PASSWORD: SmokeTest@1234
+          E2E_EMPLOYEE_PASSWORD: SmokeTest@1234
+          E2E_MANAGER_PASSWORD: SmokeTest@1234
