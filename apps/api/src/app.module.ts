@@ -31,6 +31,7 @@ import { EsignModule } from './modules/esign/esign.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { MssModule } from './modules/mss/mss.module';
+import { RecruitmentModule } from './modules/recruitment/recruitment.module';
 import { DomainEventsModule } from './modules/employees/events/domain-events.module';
 
 @Module({
@@ -83,6 +84,7 @@ import { DomainEventsModule } from './modules/employees/events/domain-events.mod
     NotificationsModule,
     ReportsModule,
     MssModule,
+    RecruitmentModule,
   ],
   providers: [
     LogContextMiddleware,
