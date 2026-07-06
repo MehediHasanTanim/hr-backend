@@ -3,6 +3,11 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      '@nestjs/event-emitter': '/Users/tanim/WorkSpace/Personal/VibeCoding/Claude Code/hr-backend/apps/api/src/__mocks__/event-emitter.mock.ts',
+    },
+  },
   test: {
     globals: true,
     environment: 'node',

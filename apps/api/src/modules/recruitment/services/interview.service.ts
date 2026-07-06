@@ -2,7 +2,34 @@ import { Inject, Injectable, BadRequestException, NotFoundException, ForbiddenEx
 import { PrismaService } from '@hr/prisma';
 import { AuditService } from '../../audit/audit.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { round2dp } from '../../payroll/utils/round2dp';
 import type { SchedulePanelDto, AssignPanelistsDto, SubmitScorecardDto, CancelPanelDto } from '../dto/interview.dto';
+
+/** Weighted rubric for computing overall scorecard scores. Must sum to 1.0. */
+export const SCORECARD_WEIGHTS = {
+  technical: 0.5,
+  communication: 0.25,
+  cultureFit: 0.25,
+} as const;
+
+/** Compute weighted overall score from a scorecard's sub-scores via round2dp. */
+export function computeOverallScore(dto: {
+  technicalScore?: number | null;
+  communicationScore?: number | null;
+  cultureFitScore?: number | null;
+}): number | null {
+  const { technicalScore, communicationScore, cultureFitScore } = dto;
+  if (technicalScore == null && communicationScore == null && cultureFitScore == null) return null;
+
+  let weighted = 0;
+  let totalWeight = 0;
+
+  if (technicalScore != null) { weighted += technicalScore * SCORECARD_WEIGHTS.technical; totalWeight += SCORECARD_WEIGHTS.technical; }
+  if (communicationScore != null) { weighted += communicationScore * SCORECARD_WEIGHTS.communication; totalWeight += SCORECARD_WEIGHTS.communication; }
+  if (cultureFitScore != null) { weighted += cultureFitScore * SCORECARD_WEIGHTS.cultureFit; totalWeight += SCORECARD_WEIGHTS.cultureFit; }
+
+  return totalWeight > 0 ? round2dp(weighted / totalWeight) : null;
+}
 
 @Injectable()
 export class InterviewService {
