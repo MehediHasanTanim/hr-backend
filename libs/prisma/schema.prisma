@@ -2905,3 +2905,407 @@ model EmployeeCertification {
   @@index([expiryDate])
   @@map("employee_certifications")
 }
+
+// ─── Sprint 10: Benefits, Compensation, Surveys, Payroll Extensions ───
+
+enum BenefitPlanType {
+  HEALTH
+  DENTAL
+  VISION
+  LIFE
+  RETIREMENT
+  WELLNESS
+  OTHER
+}
+
+enum BenefitPlanStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum EnrollmentWindowStatus {
+  SCHEDULED
+  OPEN
+  CLOSED
+}
+
+enum BenefitEnrollmentStatus {
+  PENDING
+  ACTIVE
+  WAIVED
+  TERMINATED
+}
+
+enum DependentRelationship {
+  SPOUSE
+  CHILD
+  DOMESTIC_PARTNER
+  OTHER
+}
+
+enum DependentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum CompensationCycleStatus {
+  PLANNING
+  OPEN
+  APPROVAL
+  DISBURSED
+  CANCELLED
+}
+
+enum AllocationStatus {
+  PROPOSED
+  APPROVED
+  REJECTED
+  DISBURSED
+}
+
+enum EquityInstrumentType {
+  ISO
+  NSO
+  RSU
+}
+
+enum VestingFrequency {
+  MONTHLY
+  QUARTERLY
+}
+
+enum EquityGrantStatus {
+  ACTIVE
+  FULLY_VESTED
+  CANCELLED
+}
+
+enum VestingEventStatus {
+  PENDING
+  PROCESSED
+  SKIPPED_CLIFF_NOT_MET
+}
+
+enum SurveyStatus {
+  DRAFT
+  LAUNCHED
+  CLOSED
+}
+
+enum SurveyQuestionType {
+  LIKERT_5
+  SINGLE_CHOICE
+  MULTI_CHOICE
+  FREE_TEXT
+}
+
+enum SurveyAssignmentStatus {
+  PENDING
+  COMPLETED
+}
+
+enum TaxDeclarationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum ReimbursementStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum SalaryAdvanceStatus {
+  PENDING_APPROVAL
+  APPROVED
+  RECOVERING
+  COMPLETED
+  REJECTED
+}
+
+model BenefitPlan {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId            String             @db.Uuid
+  name                 String             @db.VarChar(200)
+  type                 BenefitPlanType
+  status               BenefitPlanStatus  @default(DRAFT)
+  employerContribution Decimal            @db.Decimal(12, 2)
+  employeeContribution Decimal            @db.Decimal(12, 2)
+  eligibilityRules     Json?
+  coverageTiers        Json?
+  providerName         String             @db.VarChar(200)
+  providerDocumentS3Key String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  enrollments          BenefitEnrollment[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("benefit_plans")
+}
+
+model BenefitEnrollmentWindow {
+  id              String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String                 @db.Uuid
+  name            String                 @db.VarChar(200)
+  opensAt         DateTime               @db.Timestamptz
+  closesAt        DateTime               @db.Timestamptz
+  status          EnrollmentWindowStatus @default(SCHEDULED)
+  eligiblePlanIds String[]               @db.Uuid
+  createdAt       DateTime               @default(now())
+
+  @@index([companyId])
+  @@index([status])
+  @@map("benefit_enrollment_windows")
+}
+
+model BenefitEnrollment {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId            String                  @db.Uuid
+  benefitPlanId         String                  @db.Uuid
+  enrollmentWindowId    String                  @db.Uuid
+  status                BenefitEnrollmentStatus @default(PENDING)
+  coverageTier          String                  @db.VarChar(50)
+  calculatedEmployeeCost Decimal                @db.Decimal(12, 2)
+  effectiveDate         DateTime?               @db.Timestamptz
+  terminatedAt          DateTime?               @db.Timestamptz
+  waiverReason          String?                 @db.Text
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  plan                  BenefitPlan             @relation(fields: [benefitPlanId], references: [id])
+  dependents            BenefitDependent[]
+
+  @@index([employeeId])
+  @@index([benefitPlanId])
+  @@index([status])
+  @@map("benefit_enrollments")
+}
+
+model BenefitDependent {
+  id                     String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  enrollmentId           String                       @db.Uuid
+  fullName               String                       @db.VarChar(200)
+  relationship           DependentRelationship
+  dateOfBirth            DateTime                     @db.Date
+  verificationDocumentS3Key String?
+  verificationStatus     DependentVerificationStatus @default(PENDING)
+  createdAt              DateTime                     @default(now())
+  enrollment             BenefitEnrollment            @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@index([enrollmentId])
+  @@map("benefit_dependents")
+}
+
+model CompensationCycle {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String                   @db.Uuid
+  name            String                   @db.VarChar(200)
+  status          CompensationCycleStatus  @default(PLANNING)
+  totalBudget     Decimal                  @db.Decimal(14, 2)
+  allocatedTotal  Decimal                  @default(0) @db.Decimal(14, 2)
+  openedAt        DateTime?                @db.Timestamptz
+  approvedAt      DateTime?                @db.Timestamptz
+  disbursedAt     DateTime?                @db.Timestamptz
+  approvedBy      String?                  @db.Uuid
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  allocations     CompensationAllocation[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("compensation_cycles")
+}
+
+model CompensationAllocation {
+  id                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cycleId               String           @db.Uuid
+  employeeId            String           @db.Uuid
+  proposedBy            String           @db.Uuid
+  proposedAmount        Decimal          @db.Decimal(12, 2)
+  approvedAmount        Decimal?         @db.Decimal(12, 2)
+  status                AllocationStatus @default(PROPOSED)
+  managerNote           String?          @db.Text
+  approverNote          String?          @db.Text
+  payrollDisbursementId String?          @db.Uuid
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  cycle                 CompensationCycle @relation(fields: [cycleId], references: [id])
+
+  @@index([cycleId])
+  @@index([employeeId])
+  @@index([status])
+  @@map("compensation_allocations")
+}
+
+model EquityGrant {
+  id                   String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId           String              @db.Uuid
+  instrumentType       EquityInstrumentType
+  totalUnits           Int
+  vestedUnits          Int                 @default(0)
+  strikePrice          Decimal?            @db.Decimal(12, 4)
+  grantDate            DateTime            @db.Date
+  vestingStartDate     DateTime            @db.Date
+  cliffMonths          Int
+  vestingDurationMonths Int
+  vestingFrequency     VestingFrequency    @default(MONTHLY)
+  status               EquityGrantStatus   @default(ACTIVE)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  vestingEvents        VestingEvent[]
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("equity_grants")
+}
+
+model VestingEvent {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  equityGrantId String             @db.Uuid
+  vestDate      DateTime           @db.Date
+  unitsVested   Int
+  status        VestingEventStatus @default(PENDING)
+  processedAt   DateTime?          @db.Timestamptz
+  createdAt     DateTime           @default(now())
+  grant         EquityGrant        @relation(fields: [equityGrantId], references: [id], onDelete: Cascade)
+
+  @@unique([equityGrantId, vestDate])
+  @@index([vestDate, status])
+  @@map("vesting_events")
+}
+
+model Survey {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String       @db.Uuid
+  title       String       @db.VarChar(255)
+  description String?      @db.Text
+  status      SurveyStatus @default(DRAFT)
+  isAnonymous Boolean      @default(true)
+  launchedAt  DateTime?    @db.Timestamptz
+  closesAt    DateTime?    @db.Timestamptz
+  createdBy   String       @db.Uuid
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  questions   SurveyQuestion[]
+  assignments SurveyAssignment[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("surveys")
+}
+
+model SurveyQuestion {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyId  String             @db.Uuid
+  orderIndex Int
+  prompt    String             @db.Text
+  type      SurveyQuestionType
+  options   Json?
+  required  Boolean            @default(false)
+  survey    Survey             @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@index([surveyId])
+  @@map("survey_questions")
+}
+
+model SurveyAssignment {
+  id         String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyId   String                  @db.Uuid
+  employeeId String                  @db.Uuid
+  status     SurveyAssignmentStatus  @default(PENDING)
+  createdAt  DateTime                @default(now())
+  survey     Survey                  @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@unique([surveyId, employeeId])
+  @@index([surveyId])
+  @@index([employeeId, status])
+  @@map("survey_assignments")
+}
+
+model SurveyResponse {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  surveyId       String   @db.Uuid
+  questionId     String   @db.Uuid
+  answer         Json
+  anonymousToken String   @db.VarChar(36)
+  createdAt      DateTime @default(now())
+
+  @@index([surveyId])
+  @@index([questionId])
+  @@map("survey_responses")
+}
+
+model TaxDeclaration {
+  id                     String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId             String                @db.Uuid
+  companyId              String                @db.Uuid
+  fiscalYear             String                @db.VarChar(9)
+  declaredInvestments    Json
+  supportingDocumentS3Key String?
+  status                 TaxDeclarationStatus  @default(SUBMITTED)
+  reviewedBy             String?               @db.Uuid
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  @@index([employeeId, fiscalYear])
+  @@index([companyId])
+  @@map("tax_declarations")
+}
+
+model ExpenseReimbursement {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId    String               @db.Uuid
+  companyId     String               @db.Uuid
+  amount        Decimal              @db.Decimal(12, 2)
+  category      String               @db.VarChar(100)
+  receiptS3Key  String?
+  status        ReimbursementStatus  @default(PENDING)
+  payrollRunId  String?              @db.Uuid
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([employeeId])
+  @@index([companyId])
+  @@index([status])
+  @@index([payrollRunId])
+  @@map("expense_reimbursements")
+}
+
+model SalaryAdvance {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId           String               @db.Uuid
+  companyId            String               @db.Uuid
+  principalAmount      Decimal              @db.Decimal(12, 2)
+  outstandingBalance   Decimal              @db.Decimal(12, 2)
+  recoveryInstallments Int
+  installmentAmount    Decimal              @db.Decimal(12, 2)
+  status               SalaryAdvanceStatus  @default(PENDING_APPROVAL)
+  approvedBy           String?              @db.Uuid
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  recoveryLogs         SalaryAdvanceRecoveryLog[]
+
+  @@index([employeeId])
+  @@index([companyId])
+  @@index([status])
+  @@map("salary_advances")
+}
+
+model SalaryAdvanceRecoveryLog {
+  id                    String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  salaryAdvanceId       String       @db.Uuid
+  payrollRunId          String       @db.Uuid
+  amountRecovered       Decimal      @db.Decimal(12, 2)
+  remainingBalanceAfter Decimal      @db.Decimal(12, 2)
+  createdAt             DateTime     @default(now())
+  advance               SalaryAdvance @relation(fields: [salaryAdvanceId], references: [id])
+
+  @@index([salaryAdvanceId])
+  @@index([payrollRunId])
+  @@map("salary_advance_recovery_logs")
+}

@@ -38,6 +38,9 @@ import { FeedbackModule } from './modules/feedback/feedback.module';
 import { LmsModule } from './modules/lms/lms.module';
 import { SkillsModule } from './modules/skills/skills.module';
 import { CertificationModule } from './modules/certification/certification.module';
+import { BenefitsModule } from './modules/benefits/benefits.module';
+import { CompensationModule } from './modules/compensation/compensation.module';
+import { SurveyModule } from './modules/survey/survey.module';
 import { DomainEventsModule } from './modules/employees/events/domain-events.module';
 
 @Module({
@@ -97,6 +100,9 @@ import { DomainEventsModule } from './modules/employees/events/domain-events.mod
     LmsModule,
     SkillsModule,
     CertificationModule,
+    BenefitsModule,
+    CompensationModule,
+    SurveyModule,
   ],
   providers: [
     LogContextMiddleware,

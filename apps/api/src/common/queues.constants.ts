@@ -11,6 +11,10 @@ export const QUEUE_NAMES = {
   CERTIFICATE_GENERATION: 'lms.certificate-generation',
   TRAINING_DEADLINE_REMINDER: 'lms.training-deadline-reminder',
   CERTIFICATION_EXPIRY_CHECK: 'certification.expiry-check',
+  VESTING_CRON: 'compensation.vesting-cron',
+  ENROLLMENT_WINDOW_CLOSE: 'benefits.enrollment-window-close',
+  SURVEY_CLOSE: 'survey.close',
+  ADVANCE_RECOVERY: 'payroll.advance-recovery',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
