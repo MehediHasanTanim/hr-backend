@@ -6,6 +6,8 @@ export const QUEUE_NAMES = {
   RESUME_PARSING: 'recruitment.resume-parsing',
   OFFER_EXPIRY: 'recruitment.offer-expiry',
   RECRUITMENT_NOTIFICATIONS: 'recruitment.notifications',
+  ONBOARDING_TASK_REMINDER: 'onboarding.task-reminder',
+  REVIEW_DEADLINE_CHECK: 'performance.review-deadline-check',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

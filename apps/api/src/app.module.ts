@@ -32,6 +32,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ReportsModule } from './modules/reports/reports.module';
 import { MssModule } from './modules/mss/mss.module';
 import { RecruitmentModule } from './modules/recruitment/recruitment.module';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { PerformanceModule } from './modules/performance/performance.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
 import { DomainEventsModule } from './modules/employees/events/domain-events.module';
 
 @Module({
@@ -85,6 +88,9 @@ import { DomainEventsModule } from './modules/employees/events/domain-events.mod
     ReportsModule,
     MssModule,
     RecruitmentModule,
+    OnboardingModule,
+    PerformanceModule,
+    FeedbackModule,
   ],
   providers: [
     LogContextMiddleware,

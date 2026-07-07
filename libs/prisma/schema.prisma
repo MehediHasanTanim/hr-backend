@@ -2312,3 +2312,358 @@ model Offer {
   @@index([status])
   @@map("offers")
 }
+
+// ===== Sprint 8: Onboarding & Performance Management =====
+
+enum OnboardingStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum TaskCategory {
+  PAPERWORK
+  IT_SETUP
+  TRAINING
+  COMPLIANCE
+  TEAM_INTRO
+  OTHER
+}
+
+enum AssigneeRole {
+  EMPLOYEE
+  MANAGER
+  HR
+  IT
+}
+
+enum TaskInstanceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum ReviewCycleType {
+  ANNUAL
+  SEMI_ANNUAL
+  QUARTERLY
+  AD_HOC
+}
+
+enum ReviewCycleStatusEnum {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum PerformanceGoalType {
+  OBJECTIVE
+  KEY_RESULT
+}
+
+enum PerformanceGoalStatus {
+  NOT_STARTED
+  ON_TRACK
+  AT_RISK
+  COMPLETED
+  CANCELLED
+}
+
+enum RespondentRole {
+  SELF
+  MANAGER
+}
+
+enum PipStatus {
+  ACTIVE
+  CLOSED
+}
+
+enum PipOutcome {
+  SUCCESSFUL
+  EXTENDED
+  TERMINATED
+  RESIGNED
+}
+
+enum PipRating {
+  ON_TRACK
+  AT_RISK
+  OFF_TRACK
+}
+
+enum FeedbackVisibilityEnum {
+  PRIVATE_TO_RECIPIENT
+  SHARED_WITH_MANAGER
+  PUBLIC_TO_TEAM
+}
+
+enum FeedbackCategoryEnum {
+  PRAISE
+  CONSTRUCTIVE
+  GENERAL
+}
+
+model OnboardingTemplate {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String         @db.VarChar(255)
+  role        String?        @db.VarChar(100)
+  description String?        @db.Text
+  status      TemplateStatus @default(DRAFT)
+  createdBy   String         @db.Uuid
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  tasks       OnboardingTemplateTask[]
+  assignments EmployeeOnboarding[]
+
+  @@map("onboarding_templates")
+}
+
+model OnboardingTemplateTask {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  templateId   String       @db.Uuid
+  title        String       @db.VarChar(255)
+  description  String?      @db.Text
+  category     TaskCategory @default(OTHER)
+  dueDayOffset Int
+  assigneeRole AssigneeRole @default(EMPLOYEE)
+  sortOrder    Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  template     OnboardingTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, sortOrder])
+  @@map("onboarding_template_tasks")
+}
+
+model EmployeeOnboarding {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId  String            @db.Uuid
+  templateId  String            @db.Uuid
+  hireDate    DateTime          @db.Date
+  status      OnboardingStatus  @default(IN_PROGRESS)
+  assignedBy  String            @db.Uuid
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  template    OnboardingTemplate @relation(fields: [templateId], references: [id])
+  taskInstances OnboardingTaskInstance[]
+
+  @@unique([employeeId, templateId, hireDate])
+  @@map("employee_onboardings")
+}
+
+model OnboardingTaskInstance {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeOnboardingId  String              @db.Uuid
+  templateTaskId        String              @db.Uuid
+  title                 String              @db.VarChar(255)
+  description           String?             @db.Text
+  category              TaskCategory
+  assigneeRole          AssigneeRole
+  dueDate               DateTime            @db.Date
+  status                TaskInstanceStatus  @default(PENDING)
+  completedBy           String?             @db.Uuid
+  completedAt           DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  onboarding            EmployeeOnboarding  @relation(fields: [employeeOnboardingId], references: [id], onDelete: Cascade)
+
+  @@index([employeeOnboardingId, status])
+  @@index([dueDate, status])
+  @@map("onboarding_task_instances")
+}
+
+model ReviewCycle {
+  id                    String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String                 @db.VarChar(255)
+  cycleType             ReviewCycleType        @default(ANNUAL)
+  status                ReviewCycleStatusEnum  @default(DRAFT)
+  selfReviewDeadline    DateTime               @db.Date
+  managerReviewDeadline DateTime               @db.Date
+  calibrationDeadline   DateTime?              @db.Date
+  startDate             DateTime               @db.Date
+  endDate               DateTime               @db.Date
+  activatedAt           DateTime?
+  activatedBy           String?                @db.Uuid
+  closedAt              DateTime?
+  closedBy              String?                @db.Uuid
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  reviewInstances       ReviewInstance[]
+
+  @@map("review_cycles")
+}
+
+model PerformanceGoal {
+  id            String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId    String                @db.Uuid
+  parentGoalId  String?               @db.Uuid
+  cycleId       String?               @db.Uuid
+  title         String                @db.VarChar(255)
+  description   String?               @db.Text
+  goalType      PerformanceGoalType   @default(OBJECTIVE)
+  targetValue   Decimal?              @db.Decimal(12, 2)
+  currentValue  Decimal?              @db.Decimal(12, 2)
+  unit          String?               @db.VarChar(50)
+  status        PerformanceGoalStatus @default(NOT_STARTED)
+  dueDate       DateTime?             @db.Date
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  parentGoal    PerformanceGoal?      @relation("GoalTree", fields: [parentGoalId], references: [id])
+  childGoals    PerformanceGoal[]     @relation("GoalTree")
+  checkIns      GoalCheckIn[]
+  feedbackItems Feedback[]
+
+  @@index([employeeId, cycleId])
+  @@index([parentGoalId])
+  @@map("performance_goals")
+}
+
+model GoalCheckIn {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  goalId           String                @db.Uuid
+  postedBy         String                @db.Uuid
+  progressNote     String                @db.Text
+  statusAtCheckIn  PerformanceGoalStatus
+  valueAtCheckIn   Decimal?              @db.Decimal(12, 2)
+  createdAt        DateTime              @default(now())
+  goal             PerformanceGoal       @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@map("goal_check_ins")
+}
+
+model ReviewInstance {
+  id                     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cycleId                String        @db.Uuid
+  employeeId             String        @db.Uuid
+  managerId              String        @db.Uuid
+  formTemplateId         String?       @db.Uuid
+  selfReviewStatus       ReviewStatus  @default(PENDING)
+  managerReviewStatus    ReviewStatus  @default(PENDING)
+  overallRating          String?       @db.VarChar(50)
+  acknowledgedByEmployee Boolean       @default(false)
+  acknowledgedAt         DateTime?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  cycle                  ReviewCycle   @relation(fields: [cycleId], references: [id])
+  responses              ReviewResponse[]
+  calibrationOverrides   CalibrationOverride[]
+
+  @@unique([cycleId, employeeId])
+  @@index([cycleId, managerId])
+  @@map("review_instances")
+}
+
+model ReviewResponse {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewInstanceId      String          @db.Uuid
+  respondentRole        RespondentRole
+  sectionKey            String          @db.VarChar(100)
+  responseJson          Json
+  submittedAt           DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  reviewInstance        ReviewInstance  @relation(fields: [reviewInstanceId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewInstanceId, respondentRole, sectionKey])
+  @@map("review_responses")
+}
+
+model CalibrationOverride {
+  id                   String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewInstanceId     String         @db.Uuid
+  originalRating       String         @db.VarChar(50)
+  overriddenRating     String         @db.VarChar(50)
+  overriddenBy         String         @db.Uuid
+  justification        String         @db.Text
+  createdAt            DateTime       @default(now())
+  reviewInstance       ReviewInstance @relation(fields: [reviewInstanceId], references: [id])
+
+  @@map("calibration_overrides")
+}
+
+model PerformanceImprovementPlan {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId    String     @db.Uuid
+  managerId     String     @db.Uuid
+  initiatedBy   String     @db.Uuid
+  reason        String     @db.Text
+  goals         String     @db.Text
+  startDate     DateTime   @db.Date
+  endDate       DateTime   @db.Date
+  status        PipStatus  @default(ACTIVE)
+  outcome       PipOutcome?
+  outcomeNotes  String?    @db.Text
+  closedAt      DateTime?
+  closedBy      String?    @db.Uuid
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  checkIns      PipCheckIn[]
+
+  @@map("performance_improvement_plans")
+}
+
+model PipCheckIn {
+  id              String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pipId           String                   @db.Uuid
+  postedBy        String                   @db.Uuid
+  note            String                   @db.Text
+  ratingAtCheckIn PipRating?
+  checkInDate     DateTime                 @db.Date
+  createdAt       DateTime                 @default(now())
+  pip             PerformanceImprovementPlan @relation(fields: [pipId], references: [id], onDelete: Cascade)
+
+  @@map("pip_check_ins")
+}
+
+model Feedback {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  givenBy       String               @db.Uuid
+  receivedBy    String               @db.Uuid
+  visibility    FeedbackVisibilityEnum @default(PRIVATE_TO_RECIPIENT)
+  category      FeedbackCategoryEnum  @default(GENERAL)
+  message       String               @db.Text
+  relatedGoalId String?              @db.Uuid
+  createdAt     DateTime             @default(now())
+  relatedGoal   PerformanceGoal?     @relation(fields: [relatedGoalId], references: [id])
+
+  @@index([receivedBy, createdAt])
+  @@index([givenBy, createdAt])
+  @@map("feedbacks")
+}
+
+model OneOnOneMeeting {
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  managerId   String             @db.Uuid
+  employeeId  String             @db.Uuid
+  meetingDate DateTime           @db.Date
+  notes       String?            @db.Text
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  actionItems MeetingActionItem[]
+
+  @@map("one_on_one_meetings")
+}
+
+model MeetingActionItem {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  meetingId   String            @db.Uuid
+  description String            @db.VarChar(500)
+  ownerId     String            @db.Uuid
+  dueDate     DateTime?         @db.Date
+  status      String            @default("open") @db.VarChar(20)
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  meeting     OneOnOneMeeting   @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@map("meeting_action_items")
+}
