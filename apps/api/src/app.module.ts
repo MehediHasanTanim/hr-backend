@@ -35,6 +35,9 @@ import { RecruitmentModule } from './modules/recruitment/recruitment.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { PerformanceModule } from './modules/performance/performance.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { LmsModule } from './modules/lms/lms.module';
+import { SkillsModule } from './modules/skills/skills.module';
+import { CertificationModule } from './modules/certification/certification.module';
 import { DomainEventsModule } from './modules/employees/events/domain-events.module';
 
 @Module({
@@ -91,6 +94,9 @@ import { DomainEventsModule } from './modules/employees/events/domain-events.mod
     OnboardingModule,
     PerformanceModule,
     FeedbackModule,
+    LmsModule,
+    SkillsModule,
+    CertificationModule,
   ],
   providers: [
     LogContextMiddleware,

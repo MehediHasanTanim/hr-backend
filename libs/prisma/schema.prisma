@@ -2667,3 +2667,241 @@ model MeetingActionItem {
 
   @@map("meeting_action_items")
 }
+
+// ─── Sprint 9: Learning & Development ────────────────────────────────
+
+enum CourseFormat {
+  SELF_PACED
+  INSTRUCTOR_LED
+  EXTERNAL_LINK
+}
+
+enum CourseStatusEnum {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EnrollmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
+enum PathStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AssignmentTargetType {
+  COURSE
+  LEARNING_PATH
+}
+
+enum AssignmentScopeType {
+  DEPARTMENT
+  ROLE
+  EMPLOYEE
+  ORG_WIDE
+}
+
+enum SkillStatusEnum {
+  ACTIVE
+  DEPRECATED
+}
+
+enum ValidationStatus {
+  PENDING
+  VALIDATED
+  DISPUTED
+}
+
+enum CertVerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  EXPIRED
+  REVOKED
+}
+
+model Course {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String             @db.Uuid
+  title           String             @db.VarChar(255)
+  description     String?            @db.Text
+  thumbnailKey    String?            @db.VarChar(500)
+  format          CourseFormat
+  externalUrl     String?            @db.VarChar(2048)
+  durationMinutes Int
+  status          CourseStatusEnum   @default(DRAFT)
+  isMandatory     Boolean            @default(false)
+  createdById     String             @db.Uuid
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  skillTags       CourseSkillTag[]
+  enrollments     CourseEnrollment[]
+  pathCourses     LearningPathCourse[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("courses")
+}
+
+model CourseSkillTag {
+  id       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courseId String        @db.Uuid
+  skillId  String        @db.Uuid
+  course   Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  skill    SkillTaxonomy @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, skillId])
+  @@map("course_skill_tags")
+}
+
+model CourseEnrollment {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courseId       String           @db.Uuid
+  employeeId     String           @db.Uuid
+  status         EnrollmentStatus @default(NOT_STARTED)
+  progressPercent Int             @default(0)
+  startedAt      DateTime?
+  completedAt    DateTime?
+  certificateKey String?          @db.VarChar(500)
+  assignmentId   String?          @db.Uuid
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  course         Course           @relation(fields: [courseId], references: [id])
+  assignment     TrainingAssignment? @relation(fields: [assignmentId], references: [id])
+
+  @@unique([courseId, employeeId])
+  @@index([employeeId])
+  @@index([status])
+  @@map("course_enrollments")
+}
+
+model LearningPath {
+  id          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String               @db.Uuid
+  title       String               @db.VarChar(255)
+  description String?              @db.Text
+  status      PathStatus           @default(DRAFT)
+  createdById String               @db.Uuid
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  courses     LearningPathCourse[]
+
+  @@index([companyId])
+  @@map("learning_paths")
+}
+
+model LearningPathCourse {
+  id                      String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  learningPathId          String       @db.Uuid
+  courseId                String       @db.Uuid
+  sequenceOrder           Int
+  isSequentialLockEnabled Boolean      @default(true)
+  learningPath            LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  course                  Course       @relation(fields: [courseId], references: [id])
+
+  @@unique([learningPathId, sequenceOrder])
+  @@map("learning_path_courses")
+}
+
+model TrainingAssignment {
+  id                              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                       String               @db.Uuid
+  targetType                      AssignmentTargetType
+  targetId                        String               @db.Uuid
+  scopeType                       AssignmentScopeType
+  scopeFilter                     Json
+  deadlineAt                      DateTime
+  isMandatory                     Boolean              @default(false)
+  reminderScheduleDaysBeforeDeadline Json              @default("[]")
+  assignedById                    String               @db.Uuid
+  createdAt                       DateTime             @default(now())
+  enrollments                     CourseEnrollment[]
+
+  @@index([companyId])
+  @@index([targetType, targetId])
+  @@map("training_assignments")
+}
+
+model SkillTaxonomy {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String           @db.Uuid
+  name          String           @db.VarChar(200)
+  category      String?          @db.VarChar(100)
+  parentSkillId String?          @db.Uuid
+  status        SkillStatusEnum  @default(ACTIVE)
+  courseTags    CourseSkillTag[]
+  certSkills    CertificationSkillTag[]
+  employeeSkills EmployeeSkill[]
+
+  @@index([companyId])
+  @@index([status])
+  @@map("skill_taxonomies")
+}
+
+model EmployeeSkill {
+  id                     String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId             String           @db.Uuid
+  skillId                String           @db.Uuid
+  selfAssessedLevel      Int
+  managerValidatedLevel  Int?
+  validationStatus       ValidationStatus @default(PENDING)
+  validatedById          String?          @db.Uuid
+  validatedAt            DateTime?
+  updatedAt              DateTime         @updatedAt
+  skill                  SkillTaxonomy    @relation(fields: [skillId], references: [id])
+
+  @@unique([employeeId, skillId])
+  @@index([employeeId])
+  @@map("employee_skills")
+}
+
+model Certification {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId                String    @db.Uuid
+  name                     String    @db.VarChar(200)
+  issuingBody              String?   @db.VarChar(200)
+  validityMonths           Int?
+  isMandatoryForCompliance Boolean   @default(false)
+  relatedSkills            CertificationSkillTag[]
+  employeeCerts            EmployeeCertification[]
+
+  @@index([companyId])
+  @@map("certifications")
+}
+
+model CertificationSkillTag {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  certificationId  String        @db.Uuid
+  skillId           String        @db.Uuid
+  certification    Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  skill            SkillTaxonomy @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([certificationId, skillId])
+  @@map("certification_skill_tags")
+}
+
+model EmployeeCertification {
+  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId          String                  @db.Uuid
+  certificationId     String                  @db.Uuid
+  credentialNumber    String?                 @db.VarChar(200)
+  issuedDate          DateTime                @db.Date
+  expiryDate          DateTime?               @db.Date
+  evidenceDocumentKey String?                 @db.VarChar(500)
+  verificationStatus  CertVerificationStatus  @default(UNVERIFIED)
+  verifiedById        String?                 @db.Uuid
+  verifiedAt          DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  certification       Certification           @relation(fields: [certificationId], references: [id])
+
+  @@index([employeeId])
+  @@index([certificationId])
+  @@index([expiryDate])
+  @@map("employee_certifications")
+}

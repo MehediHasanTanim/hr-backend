@@ -8,6 +8,9 @@ export const QUEUE_NAMES = {
   RECRUITMENT_NOTIFICATIONS: 'recruitment.notifications',
   ONBOARDING_TASK_REMINDER: 'onboarding.task-reminder',
   REVIEW_DEADLINE_CHECK: 'performance.review-deadline-check',
+  CERTIFICATE_GENERATION: 'lms.certificate-generation',
+  TRAINING_DEADLINE_REMINDER: 'lms.training-deadline-reminder',
+  CERTIFICATION_EXPIRY_CHECK: 'certification.expiry-check',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
