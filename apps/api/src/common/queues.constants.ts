@@ -15,6 +15,7 @@ export const QUEUE_NAMES = {
   ENROLLMENT_WINDOW_CLOSE: 'benefits.enrollment-window-close',
   SURVEY_CLOSE: 'survey.close',
   ADVANCE_RECOVERY: 'payroll.advance-recovery',
+  ATTRITION_RISK_RECOMPUTE: 'analytics.attrition-risk-recompute',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

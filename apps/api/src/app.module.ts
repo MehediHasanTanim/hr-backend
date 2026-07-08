@@ -41,6 +41,8 @@ import { CertificationModule } from './modules/certification/certification.modul
 import { BenefitsModule } from './modules/benefits/benefits.module';
 import { CompensationModule } from './modules/compensation/compensation.module';
 import { SurveyModule } from './modules/survey/survey.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { OffboardingModule } from './modules/offboarding/offboarding.module';
 import { DomainEventsModule } from './modules/employees/events/domain-events.module';
 
 @Module({
@@ -103,6 +105,8 @@ import { DomainEventsModule } from './modules/employees/events/domain-events.mod
     BenefitsModule,
     CompensationModule,
     SurveyModule,
+    AnalyticsModule,
+    OffboardingModule,
   ],
   providers: [
     LogContextMiddleware,

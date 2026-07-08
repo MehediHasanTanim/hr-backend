@@ -3309,3 +3309,166 @@ model SalaryAdvanceRecoveryLog {
   @@index([payrollRunId])
   @@map("salary_advance_recovery_logs")
 }
+
+// ─── Sprint 11: Advanced Analytics & Offboarding ─────────────────────
+
+enum ReportEntityType {
+  EMPLOYEE
+  LEAVE
+  PAYROLL
+  ATTENDANCE
+  ATTRITION_RISK
+}
+
+enum ReportRunStatus {
+  SUCCESS
+  FAILED
+  REJECTED_UNSAFE_QUERY
+}
+
+enum RiskBand {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ExitReasonType {
+  RESIGNATION
+  TERMINATION
+  RETIREMENT
+  END_OF_CONTRACT
+}
+
+enum ExitRequestStatus {
+  SUBMITTED
+  PENDING_MANAGER_APPROVAL
+  APPROVED
+  REJECTED
+  INTERVIEW_SCHEDULED
+  CHECKLIST_IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ChecklistTaskCategory {
+  IT
+  FINANCE
+  HR
+  FACILITIES
+  MANAGER
+}
+
+enum ChecklistTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+model CustomSavedReport {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String           @db.Uuid
+  name        String           @db.VarChar(255)
+  description String?          @db.Text
+  entityType  ReportEntityType
+  definition  Json
+  createdById String           @db.Uuid
+  isShared    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  runs        ReportRun[]
+
+  @@index([companyId])
+  @@index([createdById])
+  @@index([entityType])
+  @@map("custom_saved_reports")
+}
+
+model ReportRun {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  savedReportId  String          @db.Uuid
+  executedById   String          @db.Uuid
+  rowCount       Int
+  executionMs    Int
+  status         ReportRunStatus
+  failureReason  String?         @db.Text
+  createdAt      DateTime        @default(now())
+  savedReport    CustomSavedReport @relation(fields: [savedReportId], references: [id])
+
+  @@index([savedReportId])
+  @@index([executedById])
+  @@index([createdAt])
+  @@map("report_runs")
+}
+
+model AttritionRiskScore {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employeeId  String    @db.Uuid
+  riskScore   Int
+  riskBand    RiskBand
+  signals     Json
+  computedAt  DateTime
+  isLatest    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  @@index([employeeId, computedAt])
+  @@index([isLatest])
+  @@map("attrition_risk_scores")
+}
+
+model ExitRequest {
+  id                     String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId              String            @db.Uuid
+  employeeId             String            @db.Uuid
+  reasonType             ExitReasonType
+  reasonNotes            String?           @db.Text
+  requestedLastWorkingDay DateTime          @db.Date
+  approvedLastWorkingDay  DateTime?         @db.Date
+  status                 ExitRequestStatus @default(SUBMITTED)
+  submittedById          String            @db.Uuid
+  approvedById           String?           @db.Uuid
+  approvedAt             DateTime?
+  rejectionReason        String?           @db.Text
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  interview              ExitInterview?
+  checklistTasks         OffboardingChecklistTask[]
+
+  @@index([companyId])
+  @@index([employeeId])
+  @@index([status])
+  @@map("exit_requests")
+}
+
+model ExitInterview {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exitRequestId    String       @unique @db.Uuid
+  scheduledAt      DateTime?    @db.Timestamptz
+  conductedById    String?      @db.Uuid
+  conductedAt      DateTime?    @db.Timestamptz
+  responses        Json?
+  overallSentiment String?      @db.VarChar(50)
+  isCompleted      Boolean      @default(false)
+  exitRequest      ExitRequest  @relation(fields: [exitRequestId], references: [id])
+
+  @@map("exit_interviews")
+}
+
+model OffboardingChecklistTask {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  exitRequestId String               @db.Uuid
+  taskName      String               @db.VarChar(255)
+  category      ChecklistTaskCategory
+  assignedToId  String?              @db.Uuid
+  status        ChecklistTaskStatus  @default(PENDING)
+  completedById String?              @db.Uuid
+  completedAt   DateTime?
+  notes         String?              @db.Text
+  sortOrder     Int                  @default(0)
+  exitRequest   ExitRequest          @relation(fields: [exitRequestId], references: [id])
+
+  @@index([exitRequestId])
+  @@index([status])
+  @@map("offboarding_checklist_tasks")
+}
