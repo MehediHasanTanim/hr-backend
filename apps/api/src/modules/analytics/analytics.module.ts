@@ -4,8 +4,10 @@ import { WorkforceDemographicsService, PayrollTrendsService, LeaveLiabilityServi
 import { ReportBuilderService } from './services/report-builder.service';
 import { AttritionRiskScoringService } from './services/attrition-risk.service';
 import { AuditService } from '../audit/audit.service';
+import { AnalyticsController } from './analytics.controller';
 
 @Module({
+  controllers: [AnalyticsController],
   imports: [PrismaModule],
   providers: [
     WorkforceDemographicsService, PayrollTrendsService, LeaveLiabilityService,

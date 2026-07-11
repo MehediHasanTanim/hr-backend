@@ -5,8 +5,10 @@ import { CertificationRegistryService } from './services/certification-registry.
 import { EmployeeCertificationService } from './services/employee-certification.service';
 import { CertificationExpiryCronProcessor } from './processors/certification-expiry-cron.processor';
 import { AuditService } from '../audit/audit.service';
+import { CertificationController } from './certification.controller';
 
 @Module({
+  controllers: [CertificationController],
   imports: [PrismaModule],
   providers: [
     CertificationRegistryService,

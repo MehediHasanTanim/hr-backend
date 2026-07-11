@@ -8,8 +8,10 @@ import { TrainingAssignmentService } from './services/training-assignment.servic
 import { CertificateGenerationProcessor } from './processors/certificate-generation.processor';
 import { TrainingDeadlineReminderProcessor } from './processors/training-deadline-reminder.processor';
 import { AuditService } from '../audit/audit.service';
+import { LmsController } from './lms.controller';
 
 @Module({
+  controllers: [LmsController],
   imports: [PrismaModule],
   providers: [
     CourseService,
