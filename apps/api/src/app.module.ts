@@ -43,6 +43,7 @@ import { CompensationModule } from './modules/compensation/compensation.module';
 import { SurveyModule } from './modules/survey/survey.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { OffboardingModule } from './modules/offboarding/offboarding.module';
+import { IntegrationModule } from './modules/integrations/integration.module';
 import { DomainEventsModule } from './modules/employees/events/domain-events.module';
 
 @Module({
@@ -107,6 +108,7 @@ import { DomainEventsModule } from './modules/employees/events/domain-events.mod
     SurveyModule,
     AnalyticsModule,
     OffboardingModule,
+    IntegrationModule,
   ],
   providers: [
     LogContextMiddleware,

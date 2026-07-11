@@ -16,6 +16,7 @@ export const QUEUE_NAMES = {
   SURVEY_CLOSE: 'survey.close',
   ADVANCE_RECOVERY: 'payroll.advance-recovery',
   ATTRITION_RISK_RECOMPUTE: 'analytics.attrition-risk-recompute',
+  WEBHOOK_DELIVERY: 'webhooks.delivery',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

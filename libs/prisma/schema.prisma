@@ -127,18 +127,25 @@ model RolePermission {
 }
 
 model ApiKey {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId  String    @db.Uuid
-  name       String    @db.VarChar(100)
-  keyHash    String    @unique @db.Char(64)
-  lastUsedAt DateTime?
-  expiresAt  DateTime?
-  createdAt  DateTime  @default(now())
-  revokedAt  DateTime?
-  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId       String       @db.Uuid
+  name            String       @db.VarChar(100)
+  keyPrefix       String       @db.VarChar(12)
+  keyHash         String       @unique @db.Char(64)
+  scopes          String[]
+  status          ApiKeyStatus @default(ACTIVE)
+  createdByUserId String       @db.Uuid
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  revokedByUserId String?      @db.Uuid
+  createdAt       DateTime     @default(now())
+  company         Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
+  @@index([companyId, status])
   @@index([keyHash])
+  @@index([keyPrefix])
   @@map("api_keys")
 }
 
@@ -1647,37 +1654,52 @@ model Notification {
 }
 
 model Webhook {
-  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId    String            @db.Uuid
-  url          String            @db.Text
-  events       String[]
-  secret       String            @db.Text // HMAC signing secret (stored encrypted)
-  isActive     Boolean           @default(true)
-  failureCount Int               @default(0)
-  lastFiredAt  DateTime?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  deliveries   WebhookDelivery[]
+  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId           String                  @db.Uuid
+  url                 String                  @db.Text
+  events              String[]
+  signingSecret       String                  @db.Text
+  status              WebhookEndpointStatus   @default(ACTIVE)
+  isActive            Boolean                 @default(true)
+  failureCount        Int                     @default(0)
+  consecutiveFailures Int                     @default(0)
+  deactivatedAt       DateTime?
+  lastSuccessAt       DateTime?
+  lastFiredAt         DateTime?
+  createdByUserId     String                  @db.Uuid
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  company             Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  deliveries          WebhookDelivery[]
 
   @@index([companyId])
+  @@index([companyId, status])
   @@map("webhooks")
 }
 
 model WebhookDelivery {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  webhookId   String    @db.Uuid
-  event       String    @db.VarChar(100)
-  payload     Json
-  statusCode  Int?
-  response    String?   @db.Text
-  attempt     Int       @default(1)
-  succeededAt DateTime?
-  failedAt    DateTime?
-  createdAt   DateTime  @default(now())
-  webhook     Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  id                 String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  webhookId          String                 @db.Uuid
+  event              String                 @db.VarChar(100)
+  eventType          String                 @db.VarChar(100)
+  eventId            String                 @db.VarChar(36)
+  payload            Json
+  status             WebhookDeliveryStatus  @default(PENDING)
+  attemptCount       Int                    @default(0)
+  lastAttemptAt      DateTime?
+  nextAttemptAt      DateTime?
+  statusCode         Int?
+  response           String?                @db.Text
+  lastError          String?                @db.Text
+  attempt            Int                    @default(1)
+  succeededAt        DateTime?
+  failedAt           DateTime?
+  createdAt          DateTime               @default(now())
+  webhook            Webhook                @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
+  @@unique([webhookId, eventId])
   @@index([webhookId])
+  @@index([webhookId, status])
   @@index([createdAt])
   @@map("webhook_deliveries")
 }
@@ -3471,4 +3493,45 @@ model OffboardingChecklistTask {
   @@index([exitRequestId])
   @@index([status])
   @@map("offboarding_checklist_tasks")
+}
+
+// ─── Sprint 12: Integrations, API, Webhooks, Slack ────────────────────
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+}
+
+enum WebhookEndpointStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXHAUSTED
+}
+
+enum SlackIntegrationStatus {
+  ACTIVE
+  DISCONNECTED
+}
+
+model SlackIntegration {
+  id                   String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId            String                   @db.Uuid
+  slackTeamId          String                   @db.VarChar(50)
+  slackTeamName        String                   @db.VarChar(100)
+  encryptedAccessToken String                   @db.Text
+  channelMappings      Json                     @default("[]")
+  status               SlackIntegrationStatus   @default(ACTIVE)
+  connectedByUserId    String                   @db.Uuid
+  connectedAt          DateTime                 @default(now())
+  disconnectedAt       DateTime?
+
+  @@unique([companyId])
+  @@index([companyId])
+  @@map("slack_integrations")
 }
