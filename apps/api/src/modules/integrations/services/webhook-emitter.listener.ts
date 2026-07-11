@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '@hr/prisma';
 import { QUEUE_NAMES } from '../../../common/queues.constants';
@@ -8,8 +8,8 @@ const WEBHOOK_EVENT_TYPES = ['employee.created', 'employee.terminated', 'payroll
 @Injectable()
 export class WebhookEmitterListener implements OnModuleInit {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly events: EventEmitter2,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(EventEmitter2) private readonly events: EventEmitter2,
   ) {}
 
   onModuleInit() {
